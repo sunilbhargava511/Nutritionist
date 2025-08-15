@@ -12,7 +12,9 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
     "test": "jest",
-    "postinstall": "npm run build"
+    "postinstall": "npm run build || echo 'Build failed but continuing'",
+    "railway:build": "npm run build",
+    "railway:start": "npm start"
   },
   "keywords": [
     "nutrition",

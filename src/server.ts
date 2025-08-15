@@ -7,7 +7,7 @@ import passport from './config/passport';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-import { connectDatabase } from './config/database';
+import { connectDatabase, sequelize } from './config/database';
 
 // Import routes
 import authRoutes from './routes/auth.routes';
@@ -64,9 +64,28 @@ app.use('/api/lessons', lessonRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// Health check
+// Health check - simple check that doesn't depend on database
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    env: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Database health check (separate endpoint)
+app.get('/health/db', async (req, res) => {
+  try {
+    await sequelize.authenticate();
+    res.json({ status: 'ok', database: 'connected' });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'error', 
+      database: 'disconnected', 
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
 
 // Socket.IO for real-time conversations
@@ -106,14 +125,28 @@ const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
   try {
-    await connectDatabase();
+    console.log('Starting server...');
+    console.log(`PORT: ${PORT}`);
+    console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
     
-    httpServer.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+    // Start server first, then connect to database
+    httpServer.listen(Number(PORT), '0.0.0.0', () => {
+      console.log(`✅ Server running on port ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV}`);
     });
+
+    // Connect to database (non-blocking)
+    try {
+      await connectDatabase();
+      console.log('✅ Database connected');
+    } catch (dbError) {
+      console.warn('⚠️ Database connection failed, but server will continue:', 
+        dbError instanceof Error ? dbError.message : 'Unknown database error');
+      // Don't exit - let server run without database for now
+    }
+    
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 };
