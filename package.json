@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "npm run build && node dist/server-fixed.js",
+    "start": "node dist/server-fixed.js",
     "start:diagnostic": "npm run build && node dist/server-real-routes.js",
     "start:basic-routes": "npm run build && node dist/server-with-routes.js",
     "start:progressive": "npm run build && node dist/server-progressive.js",
@@ -25,7 +25,7 @@
     "test": "jest",
     "postinstall": "echo 'Installing complete'",
     "railway:build": "npm run build",
-    "railway:start": "npm start"
+    "railway:start": "node dist/server-fixed.js"
   },
   "keywords": [
     "nutrition",
