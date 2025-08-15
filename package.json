@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node server-hybrid.js",
-    "start:build": "npm run build && node dist/server.js",
+    "start": "npm run build && node dist/server-minimal.js",
+    "start:full": "npm run build && node dist/server.js",
+    "start:hybrid": "node server-hybrid.js",
     "start:simple": "node server-simple.js",
     "build:start": "npm run build && npm run start",
     "start:prod": "node dist/server.js",
