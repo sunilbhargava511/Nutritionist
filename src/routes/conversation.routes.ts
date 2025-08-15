@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticateToken, checkConversationLimit, AuthRequest } from '../middleware/auth.middleware';
 import { ConversationService } from '../services/conversation/conversation.service';
 import { Conversation, User } from '../models';
-import { io } from '../server';
+import { getSocketIO } from '../socket';
 import multer from 'multer';
 
 const router = Router();
@@ -32,7 +32,7 @@ router.post('/start', authenticateToken, checkConversationLimit, async (req: Aut
       lessonId
     );
 
-    io.to(`conversation-${conversationId}`).emit('conversation-started', {
+    getSocketIO().to(`conversation-${conversationId}`).emit('conversation-started', {
       conversationId,
       mode,
       lessonId,
@@ -60,7 +60,7 @@ router.post('/:conversationId/message',
         audioInput
       );
 
-      io.to(`conversation-${conversationId}`).emit('new-message', {
+      getSocketIO().to(`conversation-${conversationId}`).emit('new-message', {
         userMessage: message,
         assistantMessage: response.text,
         metadata: response.metadata,
@@ -84,7 +84,7 @@ router.post('/:conversationId/lesson-action', authenticateToken, async (req: Aut
       action
     );
 
-    io.to(`conversation-${conversationId}`).emit('lesson-update', {
+    getSocketIO().to(`conversation-${conversationId}`).emit('lesson-update', {
       action,
       content: response.text,
       metadata: response.metadata,
@@ -103,7 +103,7 @@ router.post('/:conversationId/end', authenticateToken, async (req: AuthRequest, 
 
     await conversationService.endConversation(conversationId);
 
-    io.to(`conversation-${conversationId}`).emit('conversation-ended', {
+    getSocketIO().to(`conversation-${conversationId}`).emit('conversation-ended', {
       conversationId,
     });
 

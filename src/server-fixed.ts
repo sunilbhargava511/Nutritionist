@@ -6,6 +6,7 @@ import session from 'express-session';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import { setSocketIO } from './socket';
 
 dotenv.config();
 
@@ -81,6 +82,9 @@ const io = new SocketIOServer(httpServer, {
     credentials: true,
   },
 });
+
+// Initialize socket module
+setSocketIO(io);
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
