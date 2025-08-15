@@ -3,13 +3,13 @@ import mammoth from 'mammoth';
 import cheerio from 'cheerio';
 import axios from 'axios';
 import fs from 'fs/promises';
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
 export class ContentIngestionService {
-  private openai: OpenAI;
+  private anthropic: Anthropic;
 
   constructor() {
-    this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+    this.anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
   }
 
   async processText(text: string, chunkDurationMinutes: number): Promise<any[]> {
@@ -96,14 +96,16 @@ export class ContentIngestionService {
     ${text}`;
 
     try {
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
-        messages: [{ role: 'system', content: prompt }],
+      const completion = await this.anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1000,
         temperature: 0.3,
-        response_format: { type: 'json_object' },
+        system: prompt + '\n\nPlease respond with valid JSON only.',
+        messages: [{ role: 'user', content: 'Chunk this content.' }],
       });
 
-      const result = JSON.parse(completion.choices[0].message.content || '{"chunks":[]}');
+      const responseText = completion.content[0].type === 'text' ? completion.content[0].text : '{"chunks":[]}';
+      const result = JSON.parse(responseText);
       return result.chunks || [text];
     } catch (error) {
       console.error('Intelligent chunking failed, falling back to simple chunking:', error);
@@ -136,14 +138,15 @@ export class ContentIngestionService {
     ${fullContent.substring(0, 2000)}`;
 
     try {
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
-        messages: [{ role: 'system', content: prompt }],
-        temperature: 0.3,
+      const completion = await this.anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
         max_tokens: 100,
+        temperature: 0.3,
+        system: prompt,
+        messages: [{ role: 'user', content: 'Generate a title for this content.' }],
       });
 
-      return completion.choices[0].message.content || 'Nutrition lesson content';
+      return completion.content[0].type === 'text' ? completion.content[0].text : 'Nutrition lesson content';
     } catch (error) {
       console.error('Failed to generate summary:', error);
       return 'Nutrition lesson content';
@@ -157,14 +160,16 @@ export class ContentIngestionService {
     ${fullContent.substring(0, 2000)}`;
 
     try {
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
-        messages: [{ role: 'system', content: prompt }],
+      const completion = await this.anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 500,
         temperature: 0.3,
-        response_format: { type: 'json_object' },
+        system: prompt + '\n\nPlease respond with valid JSON only.',
+        messages: [{ role: 'user', content: 'Extract topics from this content.' }],
       });
 
-      const result = JSON.parse(completion.choices[0].message.content || '{"topics":[]}');
+      const responseText = completion.content[0].type === 'text' ? completion.content[0].text : '{"topics":[]}';
+      const result = JSON.parse(responseText);
       return result.topics || [];
     } catch (error) {
       console.error('Failed to extract topics:', error);

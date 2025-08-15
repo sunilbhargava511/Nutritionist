@@ -9,7 +9,7 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 const conversationService = new ConversationService({
-  openaiApiKey: process.env.OPENAI_API_KEY!,
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY!,
   elevenLabsApiKey: process.env.ELEVENLABS_API_KEY!,
   elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID!,
 });

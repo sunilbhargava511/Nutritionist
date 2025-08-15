@@ -1,10 +1,10 @@
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { ElevenLabsService } from './elevenlabs.service';
 import { User, Conversation, Lesson, PatientProfile } from '../../models';
 import { EventEmitter } from 'events';
 
 export interface ConversationConfig {
-  openaiApiKey: string;
+  anthropicApiKey: string;
   elevenLabsApiKey: string;
   elevenLabsVoiceId: string;
 }
@@ -25,13 +25,13 @@ export interface ConversationContext {
 }
 
 export class ConversationService extends EventEmitter {
-  private openai: OpenAI;
+  private anthropic: Anthropic;
   private elevenLabs: ElevenLabsService;
   private activeConversations: Map<string, ConversationContext>;
 
   constructor(config: ConversationConfig) {
     super();
-    this.openai = new OpenAI({ apiKey: config.openaiApiKey });
+    this.anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
     this.elevenLabs = new ElevenLabsService({
       apiKey: config.elevenLabsApiKey,
       voiceId: config.elevenLabsVoiceId,
@@ -122,18 +122,26 @@ export class ConversationService extends EventEmitter {
       timestamp: new Date(),
     });
 
-    // Generate AI response
-    const completion = await this.openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: context.conversationHistory.map(msg => ({
-        role: msg.role,
+    // Generate AI response using Claude
+    const messages = context.conversationHistory
+      .filter(msg => msg.role !== 'system')
+      .map(msg => ({
+        role: msg.role as 'user' | 'assistant',
         content: msg.content,
-      })),
-      temperature: 0.7,
+      }));
+
+    const systemMessage = context.conversationHistory.find(msg => msg.role === 'system')?.content || 
+      `You are a helpful nutritionist assistant. Provide personalized nutrition advice and support.`;
+
+    const completion = await this.anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 500,
+      temperature: 0.7,
+      system: systemMessage,
+      messages: messages,
     });
 
-    const aiResponse = completion.choices[0].message.content || '';
+    const aiResponse = completion.content[0].type === 'text' ? completion.content[0].text : '';
 
     // Add AI response to history
     context.conversationHistory.push({
@@ -335,14 +343,16 @@ export class ConversationService extends EventEmitter {
     Return as JSON with categories: allergies, restrictions, conditions, preferences, goals`;
 
     try {
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
-        messages: [{ role: 'system', content: insightPrompt }],
+      const completion = await this.anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1000,
         temperature: 0.3,
-        response_format: { type: 'json_object' },
+        system: insightPrompt + '\n\nPlease respond with valid JSON only.',
+        messages: [{ role: 'user', content: 'Generate insights from the conversation.' }],
       });
 
-      const insights = JSON.parse(completion.choices[0].message.content || '{}');
+      const responseText = completion.content[0].type === 'text' ? completion.content[0].text : '{}';
+      const insights = JSON.parse(responseText);
       
       if (context.patientProfile && Object.keys(insights).length > 0) {
         // Update patient profile with new insights
@@ -395,14 +405,16 @@ export class ConversationService extends EventEmitter {
     ${context.conversationHistory.map(msg => `${msg.role}: ${msg.content}`).join('\n')}`;
 
     try {
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
-        messages: [{ role: 'system', content: summaryPrompt }],
+      const completion = await this.anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1000,
         temperature: 0.3,
-        response_format: { type: 'json_object' },
+        system: summaryPrompt + '\n\nPlease respond with valid JSON only.',
+        messages: [{ role: 'user', content: 'Generate a summary of the conversation.' }],
       });
 
-      return JSON.parse(completion.choices[0].message.content || '{"summary":"","actionItems":[],"topics":[]}');
+      const responseText = completion.content[0].type === 'text' ? completion.content[0].text : '{"summary":"","actionItems":[],"topics":[]}';
+      return JSON.parse(responseText);
     } catch (error) {
       console.error('Error generating summary:', error);
       return {
