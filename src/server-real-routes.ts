@@ -98,6 +98,42 @@ const startServer = async () => {
         routeErrors.push(`profile: ${error instanceof Error ? error.message : String(error)}`);
       }
 
+      // Try loading lesson routes
+      try {
+        console.log('📝 Loading lesson routes...');
+        const lessonRoutes = await import('./routes/lesson.routes');
+        app.use('/api/lessons', lessonRoutes.default);
+        routesLoaded.push('lessons');
+        console.log('✅ Lesson routes loaded');
+      } catch (error) {
+        console.error('❌ Lesson routes failed:', error);
+        routeErrors.push(`lessons: ${error instanceof Error ? error.message : String(error)}`);
+      }
+
+      // Try loading conversation routes (likely problematic due to Socket.IO)
+      try {
+        console.log('📝 Loading conversation routes...');
+        const conversationRoutes = await import('./routes/conversation.routes');
+        app.use('/api/conversations', conversationRoutes.default);
+        routesLoaded.push('conversations');
+        console.log('✅ Conversation routes loaded');
+      } catch (error) {
+        console.error('❌ Conversation routes failed:', error);
+        routeErrors.push(`conversations: ${error instanceof Error ? error.message : String(error)}`);
+      }
+
+      // Try loading analytics routes
+      try {
+        console.log('📝 Loading analytics routes...');
+        const analyticsRoutes = await import('./routes/analytics.routes');
+        app.use('/api/analytics', analyticsRoutes.default);
+        routesLoaded.push('analytics');
+        console.log('✅ Analytics routes loaded');
+      } catch (error) {
+        console.error('❌ Analytics routes failed:', error);
+        routeErrors.push(`analytics: ${error instanceof Error ? error.message : String(error)}`);
+      }
+
       // Add route status endpoint
       app.get('/api/routes-status', (req, res) => {
         res.json({
