@@ -1,17 +1,11 @@
-import { User } from '../models/User';
+import { User as UserModel } from '../models/User';
 
 declare global {
   namespace Express {
-    interface User {
-      id: string;
-      email: string;
-      name: string;
-      role: string;
-      [key: string]: any;
-    }
+    interface User extends UserModel {}
   }
 }
 
 export interface AuthenticatedRequest extends Express.Request {
-  user?: User;
+  user?: UserModel;
 }

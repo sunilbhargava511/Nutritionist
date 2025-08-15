@@ -43,6 +43,9 @@ export class Lesson extends Model<LessonAttributes, LessonCreationAttributes> im
   public averageRating?: number;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
+
+  // Association properties
+  public conversations?: any[];
 }
 
 Lesson.init(

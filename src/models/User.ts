@@ -45,6 +45,9 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
+  // Association properties
+  public profile?: any;
+
   public async comparePassword(password: string): Promise<boolean> {
     if (!this.password) return false;
     return bcrypt.compare(password, this.password);
