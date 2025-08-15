@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nutritionist Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+            margin: 1rem;
+        }
+        
+        h1 {
+            color: #4a5568;
+            margin-bottom: 1rem;
+        }
+        
+        p {
+            color: #718096;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.5rem;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+        
+        .status {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f7fafc;
+            border-radius: 0.5rem;
+        }
+        
+        .status.online {
+            border-left: 4px solid #48bb78;
+        }
+        
+        .status.offline {
+            border-left: 4px solid #f56565;
+        }
+        
+        .features {
+            text-align: left;
+            margin-top: 2rem;
+        }
+        
+        .features h3 {
+            color: #4a5568;
+            margin-bottom: 1rem;
+        }
+        
+        .features ul {
+            list-style: none;
+        }
+        
+        .features li {
+            color: #718096;
+            margin-bottom: 0.5rem;
+            position: relative;
+            padding-left: 1.5rem;
+        }
+        
+        .features li::before {
+            content: "✓";
+            color: #48bb78;
+            position: absolute;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🥗 Nutritionist Assistant</h1>
+        <p>AI-powered voice assistant platform for nutritionists and their patients</p>
+        
+        <div class="status" id="status">
+            <strong>Server Status:</strong> <span id="status-text">Checking...</span>
+        </div>
+        
+        <div style="margin: 2rem 0;">
+            <a href="/api/auth/google" class="btn">Sign in with Google</a>
+            <button onclick="testAPI()" class="btn">Test API</button>
+        </div>
+        
+        <div class="features">
+            <h3>Platform Features</h3>
+            <ul>
+                <li>Free-form nutrition conversations</li>
+                <li>Structured lesson delivery</li>
+                <li>Patient profile tracking</li>
+                <li>Conversation reports & analytics</li>
+                <li>11Labs voice synthesis</li>
+                <li>White-label branding support</li>
+            </ul>
+        </div>
+        
+        <div style="margin-top: 2rem; font-size: 0.875rem; color: #a0aec0;">
+            <p>Built with Express.js, SQLite, OpenAI, and 11Labs</p>
+        </div>
+    </div>
+
+    <script>
+        async function checkStatus() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('status').className = 'status online';
+                    document.getElementById('status-text').textContent = 'Online ✓';
+                } else {
+                    throw new Error('Health check failed');
+                }
+            } catch (error) {
+                document.getElementById('status').className = 'status offline';
+                document.getElementById('status-text').textContent = 'Offline ✗';
+            }
+        }
+        
+        async function testAPI() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                alert('API Test Successful!\\n\\n' + JSON.stringify(data, null, 2));
+            } catch (error) {
+                alert('API Test Failed: ' + error.message);
+            }
+        }
+        
+        // Check status on page load
+        checkStatus();
+        
+        // Check status every 30 seconds
+        setInterval(checkStatus, 30000);
+    </script>
+</body>
+</html>
