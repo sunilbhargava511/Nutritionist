@@ -125,32 +125,46 @@ const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
   try {
-    console.log('Starting server...');
+    console.log('🚀 Starting Nutritionist Assistant Server...');
     console.log(`PORT: ${PORT}`);
     console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`CWD: ${process.cwd()}`);
     
-    // Start server first, then connect to database
+    // Start server immediately - don't wait for anything
     httpServer.listen(Number(PORT), '0.0.0.0', () => {
       console.log(`✅ Server running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV}`);
+      console.log(`🌐 Health check available at /health`);
     });
 
-    // Connect to database (non-blocking)
-    try {
-      await connectDatabase();
-      console.log('✅ Database connected');
-    } catch (dbError) {
-      console.warn('⚠️ Database connection failed, but server will continue:', 
-        dbError instanceof Error ? dbError.message : 'Unknown database error');
-      // Don't exit - let server run without database for now
-    }
+    // Try to connect to database in background (completely optional)
+    setTimeout(async () => {
+      try {
+        console.log('🔌 Attempting database connection...');
+        await connectDatabase();
+        console.log('✅ Database connected successfully');
+      } catch (dbError) {
+        console.warn('⚠️ Database unavailable (server continues without DB):', 
+          dbError instanceof Error ? dbError.message : String(dbError));
+      }
+    }, 1000);
     
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('❌ Server startup failed:', error);
     process.exit(1);
   }
 };
 
 startServer();
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('📦 Received SIGTERM, shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('📦 Received SIGINT, shutting down gracefully');  
+  process.exit(0);
+});
 
 export { app, io };

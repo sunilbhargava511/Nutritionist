@@ -6,14 +6,14 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node server-simple.js",
-    "start:full": "node dist/server.js",
+    "start": "npm run build && node dist/server.js",
+    "start:simple": "node server-simple.js",
     "build:start": "npm run build && npm run start",
     "start:prod": "node dist/server.js",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
     "test": "jest",
-    "postinstall": "echo 'Skipping build for simple server test'",
+    "postinstall": "echo 'Installing complete'",
     "railway:build": "npm run build",
     "railway:start": "npm start"
   },
