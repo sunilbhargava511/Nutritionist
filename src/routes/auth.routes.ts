@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import passport from 'passport';
+// import passport from 'passport'; // Temporarily disabled with Google OAuth
 import { generateToken, generateRefreshToken } from '../middleware/auth.middleware';
 import { User, PatientProfile } from '../models';
 import jwt from 'jsonwebtoken';

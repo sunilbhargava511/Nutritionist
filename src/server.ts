@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import session from 'express-session';
-import passport from './config/passport';
+// import passport from './config/passport'; // Temporarily disabled with Google OAuth
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
@@ -49,9 +49,9 @@ app.use(session({
   },
 }));
 
-// Passport middleware
-app.use(passport.initialize());
-app.use(passport.session());
+// Passport middleware - temporarily disabled with Google OAuth
+// app.use(passport.initialize());
+// app.use(passport.session());
 
 // Static files
 app.use('/uploads', express.static('public/uploads'));
