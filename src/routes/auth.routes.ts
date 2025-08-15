@@ -6,20 +6,22 @@ import jwt from 'jsonwebtoken';
 
 const router = Router();
 
-router.get('/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
+// Google OAuth temporarily disabled
+router.get('/google', (req, res) => {
+  res.json({ 
+    error: 'Google OAuth temporarily disabled', 
+    message: 'Please use email/password registration instead',
+    registerEndpoint: '/api/auth/register'
+  });
+});
 
-router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login' }),
-  async (req, res) => {
-    const user = req.user as User;
-    const token = generateToken(user);
-    const refreshToken = generateRefreshToken(user);
-    
-    res.redirect(`${process.env.FRONTEND_URL}/auth/success?token=${token}&refresh=${refreshToken}`);
-  }
-);
+router.get('/google/callback', (req, res) => {
+  res.json({ 
+    error: 'Google OAuth temporarily disabled',
+    message: 'Please use email/password login instead',
+    loginEndpoint: '/api/auth/login'
+  });
+});
 
 router.post('/register', async (req, res) => {
   try {
@@ -148,8 +150,21 @@ router.post('/refresh', async (req, res) => {
 });
 
 router.post('/logout', (req, res) => {
-  req.logout(() => {
-    res.json({ message: 'Logged out successfully' });
+  // Simple logout since we're not using sessions for now
+  res.json({ message: 'Logged out successfully' });
+});
+
+// Test endpoint to verify auth system is working
+router.get('/test', (req, res) => {
+  res.json({ 
+    message: 'Auth system is working!',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      register: 'POST /api/auth/register',
+      login: 'POST /api/auth/login',
+      refresh: 'POST /api/auth/refresh'
+    },
+    googleOAuth: 'disabled'
   });
 });
 

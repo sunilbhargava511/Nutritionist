@@ -113,8 +113,21 @@
         </div>
         
         <div style="margin: 2rem 0;">
-            <a href="/api/auth/google" class="btn">Sign in with Google</a>
+            <button onclick="testAuth()" class="btn">Test Auth System</button>
             <button onclick="testAPI()" class="btn">Test API</button>
+            <button onclick="showRegistration()" class="btn">Register Account</button>
+        </div>
+        
+        <div id="registration-form" style="display: none; margin: 2rem 0; padding: 1rem; background: #f7fafc; border-radius: 0.5rem;">
+            <h3>Create Account</h3>
+            <input type="email" id="email" placeholder="Email" style="width: 100%; margin: 0.5rem 0; padding: 0.5rem;">
+            <input type="password" id="password" placeholder="Password" style="width: 100%; margin: 0.5rem 0; padding: 0.5rem;">
+            <input type="text" id="name" placeholder="Full Name" style="width: 100%; margin: 0.5rem 0; padding: 0.5rem;">
+            <select id="role" style="width: 100%; margin: 0.5rem 0; padding: 0.5rem;">
+                <option value="patient">Patient</option>
+                <option value="nutritionist">Nutritionist</option>
+            </select>
+            <button onclick="register()" class="btn">Create Account</button>
         </div>
         
         <div class="features">
@@ -159,6 +172,54 @@
                 alert('API Test Successful!\\n\\n' + JSON.stringify(data, null, 2));
             } catch (error) {
                 alert('API Test Failed: ' + error.message);
+            }
+        }
+        
+        async function testAuth() {
+            try {
+                const response = await fetch('/api/auth/test');
+                const data = await response.json();
+                alert('Auth System Test Successful!\\n\\n' + JSON.stringify(data, null, 2));
+            } catch (error) {
+                alert('Auth Test Failed: ' + error.message);
+            }
+        }
+        
+        function showRegistration() {
+            const form = document.getElementById('registration-form');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        async function register() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const name = document.getElementById('name').value;
+            const role = document.getElementById('role').value;
+            
+            if (!email || !password || !name) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password, name, role })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Registration Successful!\\n\\nYou can now use the API with your token:\\n' + data.token);
+                    document.getElementById('registration-form').style.display = 'none';
+                } else {
+                    alert('Registration Failed: ' + data.error);
+                }
+            } catch (error) {
+                alert('Registration Error: ' + error.message);
             }
         }
         
