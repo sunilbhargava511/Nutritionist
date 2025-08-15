@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "npm run build && node dist/server-real-routes.js",
+    "start": "npm run build && node dist/server-fixed.js",
+    "start:diagnostic": "npm run build && node dist/server-real-routes.js",
     "start:basic-routes": "npm run build && node dist/server-with-routes.js",
     "start:progressive": "npm run build && node dist/server-progressive.js",
     "start:minimal": "npm run build && node dist/server-minimal.js",
