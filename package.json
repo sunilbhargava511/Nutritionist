@@ -2,7 +2,7 @@
   "name": "nutritionist-assistant",
   "version": "1.0.0",
   "description": "AI-powered nutritionist assistant platform",
-  "main": "dist/server.js",
+  "main": "dist/server-fixed.js",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
