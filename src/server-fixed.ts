@@ -70,7 +70,7 @@ app.use(express.static('public'));
 
 // Health check
 app.get('/health', (req, res) => {
-  console.log('✅ Health check requested');
+  console.log(`✅ Health check requested from ${req.ip} - User-Agent: ${req.get('User-Agent')}`);
   res.status(200).json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
@@ -78,7 +78,9 @@ app.get('/health', (req, res) => {
     env: process.env.NODE_ENV,
     message: 'Nutritionist Assistant API (Fixed)',
     uptime: process.uptime(),
-    version: '1.0.0'
+    version: '1.0.0',
+    requestFrom: req.ip,
+    headers: req.headers
   });
 });
 
@@ -182,8 +184,8 @@ const startServer = async () => {
   try {
     console.log('🔧 Starting server...');
     
-    // Start server - Railway expects it to bind to 0.0.0.0
-    httpServer.listen(Number(PORT), '0.0.0.0', () => {
+    // Start server - Try binding to all interfaces for Railway
+    httpServer.listen(Number(PORT), () => {
       console.log(`✅ Fixed server running on port ${PORT}`);
       console.log(`🌐 Health check: /health`);
       console.log(`📱 Socket.IO ready`);
