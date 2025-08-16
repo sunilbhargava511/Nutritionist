@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server-fixed.js",
+    "start": "node server-test.js",
     "start:diagnostic": "npm run build && node dist/server-real-routes.js",
     "start:basic-routes": "npm run build && node dist/server-with-routes.js",
     "start:progressive": "npm run build && node dist/server-progressive.js",
