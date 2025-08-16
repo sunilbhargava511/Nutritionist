@@ -10,17 +10,18 @@ const server = http.createServer((req, res) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   
   if (req.url === '/health') {
+    console.log('🔍 HEALTH CHECK REQUESTED - Railway is checking our server');
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
-      message: 'Simple test server'
+      message: 'Simple test server - health check passed!'
     }));
     return;
   }
   
   res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('Test server is running!');
+  res.end('Test server is running! Try /health endpoint.');
 });
 
 server.listen(PORT, '0.0.0.0', () => {
