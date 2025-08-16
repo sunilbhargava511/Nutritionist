@@ -127,66 +127,45 @@ let routesLoaded: string[] = [];
 let routeErrors: string[] = [];
 let serverReady = false;
 
+// Import routes at module level
+import authRoutes from './routes/auth.routes';
+import conversationRoutes from './routes/conversation.routes';
+import lessonRoutes from './routes/lesson.routes';
+import profileRoutes from './routes/profile.routes';
+import analyticsRoutes from './routes/analytics.routes';
+
+// Apply routes before starting server
+console.log('📝 Loading routes...');
+app.use('/api/auth', authRoutes);
+app.use('/api/conversations', conversationRoutes);
+app.use('/api/lessons', lessonRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/analytics', analyticsRoutes);
+console.log('✅ Routes loaded');
+
+// Route status endpoint
+app.get('/api/routes-status', (req, res) => {
+  res.json({
+    loaded: ['auth', 'conversations', 'lessons', 'profile', 'analytics'],
+    errors: routeErrors,
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    ready: serverReady
+  });
+});
+
 // Start server
 const startServer = async () => {
   try {
     console.log('🔧 Starting server...');
     
-    // Start server immediately
+    // Start server
     httpServer.listen(Number(PORT), '0.0.0.0', () => {
       console.log(`✅ Fixed server running on port ${PORT}`);
       console.log(`🌐 Health check: /health`);
       console.log(`📱 Socket.IO ready`);
+      serverReady = true;
     });
-
-    // Load routes immediately after server starts (faster startup)
-    setTimeout(async () => {
-      try {
-        console.log('📝 Loading all routes...');
-        
-        // Load routes in parallel for faster startup
-        const [authRoutes, conversationRoutes, lessonRoutes, profileRoutes, analyticsRoutes] = await Promise.all([
-          import('./routes/auth.routes'),
-          import('./routes/conversation.routes'),
-          import('./routes/lesson.routes'),
-          import('./routes/profile.routes'),
-          import('./routes/analytics.routes')
-        ]);
-
-        app.use('/api/auth', authRoutes.default);
-        routesLoaded.push('auth');
-        
-        app.use('/api/conversations', conversationRoutes.default);
-        routesLoaded.push('conversations');
-        
-        app.use('/api/lessons', lessonRoutes.default);
-        routesLoaded.push('lessons');
-        
-        app.use('/api/profile', profileRoutes.default);
-        routesLoaded.push('profile');
-        
-        app.use('/api/analytics', analyticsRoutes.default);
-        routesLoaded.push('analytics');
-
-        console.log(`✅ All routes loaded: ${routesLoaded.join(', ')}`);
-        serverReady = true;
-        
-        // Add route status endpoint
-        app.get('/api/routes-status', (req, res) => {
-          res.json({
-            loaded: routesLoaded,
-            errors: routeErrors,
-            timestamp: new Date().toISOString(),
-            uptime: process.uptime(),
-            ready: serverReady
-          });
-        });
-        
-      } catch (error) {
-        console.error('❌ Route loading failed:', error);
-        routeErrors.push(`routes: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }, 1000);
 
     // Try database connection in background
     setTimeout(async () => {
