@@ -191,6 +191,11 @@ const startServer = async () => {
       console.log(`📊 Process PID: ${process.pid}`);
       console.log(`🔍 Server will log all requests and keep running...`);
       serverReady = true;
+      
+      // Add keepalive mechanism for Railway
+      setInterval(() => {
+        console.log(`💓 Server heartbeat - PID ${process.pid} - Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+      }, 30000); // Every 30 seconds
     });
 
     // Handle server errors
