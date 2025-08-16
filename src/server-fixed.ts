@@ -13,6 +13,20 @@ dotenv.config();
 console.log('🚀 Starting Fixed Nutritionist Server...');
 
 const app = express();
+
+// Add comprehensive error logging for Railway debugging
+process.on('uncaughtException', (error) => {
+  console.error('💥 UNCAUGHT EXCEPTION:', error);
+  console.error('Stack:', error.stack);
+  console.error('Process will exit in 5 seconds...');
+  setTimeout(() => process.exit(1), 5000);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 UNHANDLED REJECTION at:', promise);
+  console.error('Reason:', reason);
+  console.error('This should be handled gracefully, but continuing...');
+});
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
 
@@ -21,6 +35,12 @@ app.set('trust proxy', 1);
 
 console.log(`PORT: ${PORT}`);
 console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+
+// Request logging middleware for Railway debugging
+app.use((req, res, next) => {
+  console.log(`📥 ${new Date().toISOString()} - ${req.method} ${req.url} from ${req.ip}`);
+  next();
+});
 
 // Basic middleware
 app.use(helmet());
@@ -168,6 +188,8 @@ const startServer = async () => {
       console.log(`🌐 Health check: /health`);
       console.log(`📱 Socket.IO ready`);
       console.log(`🚀 Server ready for Railway health checks`);
+      console.log(`📊 Process PID: ${process.pid}`);
+      console.log(`🔍 Server will log all requests and keep running...`);
       serverReady = true;
     });
 
