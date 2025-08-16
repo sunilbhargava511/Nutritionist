@@ -16,6 +16,9 @@ const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
 
+// Railway-specific optimizations
+app.set('trust proxy', 1);
+
 console.log(`PORT: ${PORT}`);
 console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
 
@@ -159,12 +162,21 @@ const startServer = async () => {
   try {
     console.log('🔧 Starting server...');
     
-    // Start server
+    // Start server - Railway expects it to bind to 0.0.0.0
     httpServer.listen(Number(PORT), '0.0.0.0', () => {
       console.log(`✅ Fixed server running on port ${PORT}`);
       console.log(`🌐 Health check: /health`);
       console.log(`📱 Socket.IO ready`);
+      console.log(`🚀 Server ready for Railway health checks`);
       serverReady = true;
+    });
+
+    // Handle server errors
+    httpServer.on('error', (error: any) => {
+      console.error('❌ Server error:', error);
+      if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use`);
+      }
     });
 
     // Try database connection in background
@@ -229,12 +241,29 @@ startServer();
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('📦 Received SIGTERM, shutting down gracefully');
-  process.exit(0);
+  httpServer.close(() => {
+    console.log('✅ HTTP server closed');
+    process.exit(0);
+  });
 });
 
 process.on('SIGINT', () => {
   console.log('📦 Received SIGINT, shutting down gracefully');
-  process.exit(0);
+  httpServer.close(() => {
+    console.log('✅ HTTP server closed');
+    process.exit(0);
+  });
+});
+
+// Keep process alive
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (error) => {
+  console.error('❌ Unhandled Rejection:', error);
+  process.exit(1);
 });
 
 export { app, io };
