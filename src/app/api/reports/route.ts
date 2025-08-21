@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateSessionReport } from '@/lib/report-generator';
 import { educationalSessionService } from '@/lib/educational-session';
-import { db } from '@/lib/database';
+import { getDB } from '@/lib/database';
 import * as schema from '@/lib/database/schema';
 import { eq } from 'drizzle-orm';
 
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         const reportId = `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const reportPath = `/reports/${sessionId}/${reportId}.pdf`;
 
-        await db.insert(schema.sessionReports).values({
+        const db = getDB(); await db.insert(schema.sessionReports).values({
           id: reportId,
           sessionId,
           reportPath,

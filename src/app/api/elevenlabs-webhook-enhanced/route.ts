@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { getClaudeService } from '@/lib/claude-enhanced';
 import { sessionTranscriptService } from '@/lib/session-transcript-service';
 import { initializeDatabase } from '@/lib/database';
-import { db } from '@/lib/database';
+import { getDB } from '@/lib/database';
 import * as schema from '@/lib/database/schema';
 import { eq, and } from 'drizzle-orm';
 

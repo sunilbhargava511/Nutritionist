@@ -1,15 +1,16 @@
-const path = require('path');
+import Database from 'better-sqlite3';
+import path from 'path';
 
-function initializeDatabase() {
-  const dbPath = process.env.DATABASE_URL?.replace('file:', '') || path.join(process.cwd(), 'database.sqlite');
-  console.log('[DB Init] Database path:', dbPath);
+let initialized = false;
+
+export function ensureDatabaseInitialized() {
+  if (initialized) return;
   
   try {
-    // Lazy load better-sqlite3 to avoid issues during build
-    const Database = require('better-sqlite3');
+    const dbPath = process.env.DATABASE_URL?.replace('file:', '') || path.join(process.cwd(), 'database.sqlite');
     const db = new Database(dbPath);
     
-    // Create admin_settings table
+    // Create tables if they don't exist
     db.exec(`
       CREATE TABLE IF NOT EXISTS admin_settings (
         key TEXT PRIMARY KEY,
@@ -19,7 +20,6 @@ function initializeDatabase() {
       )
     `);
     
-    // Create sessions table
     db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
@@ -34,7 +34,6 @@ function initializeDatabase() {
       )
     `);
     
-    // Create users table
     db.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -45,10 +44,9 @@ function initializeDatabase() {
       )
     `);
     
-    // Insert default settings if not exists
-    const settingsCount = db.prepare('SELECT COUNT(*) as count FROM admin_settings').get();
+    // Check if settings exist, if not add defaults
+    const settingsCount = db.prepare('SELECT COUNT(*) as count FROM admin_settings').get() as { count: number };
     if (settingsCount.count === 0) {
-      console.log('[DB Init] Inserting default settings...');
       db.prepare(`
         INSERT INTO admin_settings (key, value) VALUES 
         ('autoNotesEnabled', 'true'),
@@ -58,11 +56,10 @@ function initializeDatabase() {
     }
     
     db.close();
-    console.log('[DB Init] Database initialized successfully');
+    initialized = true;
+    console.log('[DB Runtime] Database initialized successfully');
   } catch (error) {
-    console.error('[DB Init] Failed to initialize database:', error);
-    // Don't throw - allow app to continue with in-memory fallback
+    console.error('[DB Runtime] Failed to initialize database:', error);
+    // App will continue with localStorage fallback
   }
 }
-
-module.exports = { initializeDatabase };

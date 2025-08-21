@@ -7,7 +7,7 @@ import { educationalSessionService } from '@/lib/educational-session';
 import { initializeDatabase } from '@/lib/database';
 import { EnhancedSessionStorage } from '@/lib/session-enhanced';
 import { lessonService } from '@/lib/lesson-service';
-import { db } from '@/lib/database';
+import { getDB } from '@/lib/database';
 import * as schema from '@/lib/database/schema';
 import { eq, and } from 'drizzle-orm';
 

@@ -1,4 +1,4 @@
-import { db } from './database';
+import { getDB } from './database';
 import * as schema from './database/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import { 
@@ -36,7 +36,7 @@ export class EducationalSessionService {
     const finalPersonalizationEnabled = personalizationEnabled !== undefined ? personalizationEnabled : defaults.personalizationEnabled;
     const finalConversationAware = conversationAware !== undefined ? conversationAware : defaults.conversationAware;
     
-    const newSession = await db.insert(schema.conversations).values({
+    const newSession = const db = getDB(); await db.insert(schema.conversations).values({
       id: sessionId,
       conversationId: conversationId || sessionId, // Store ElevenLabs conversation_id
       conversationType,

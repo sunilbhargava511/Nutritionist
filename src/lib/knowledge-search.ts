@@ -1,5 +1,5 @@
 import { Article } from '@/types';
-import { db } from './database';
+import { getDB } from './database';
 import * as schema from './database/schema';
 
 export interface SearchResult {
@@ -33,7 +33,7 @@ export class KnowledgeSearchService {
     }
 
     try {
-      const knowledgeFiles = await db.select().from(schema.knowledgeBaseFiles);
+      const knowledgeFiles = const db = getDB(); await db.select().from(schema.knowledgeBaseFiles);
       
       const articles: Article[] = knowledgeFiles.map(file => {
         // Parse the markdown content to extract metadata

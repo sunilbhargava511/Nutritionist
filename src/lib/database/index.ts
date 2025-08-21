@@ -4,26 +4,42 @@ import * as schema from './schema';
 import path from 'path';
 
 // Database path configuration
-// Railway uses persistent volumes or environment-specific paths
-const dbPath = process.env.DATABASE_URL?.startsWith('file:') 
-  ? process.env.DATABASE_URL.replace('file:', '')
-  : process.env.NODE_ENV === 'production' 
-    ? (process.env.DATABASE_PATH || '/tmp/database.sqlite')  // Use DATABASE_PATH env var if set
-    : path.join(process.cwd(), 'database.sqlite');
+const getDbPath = () => {
+  return process.env.DATABASE_URL?.startsWith('file:') 
+    ? process.env.DATABASE_URL.replace('file:', '')
+    : process.env.NODE_ENV === 'production' 
+      ? (process.env.DATABASE_PATH || '/tmp/database.sqlite')
+      : path.join(process.cwd(), 'database.sqlite');
+};
 
-const sqlite = new Database(dbPath);
+let sqlite: Database.Database;
+let db: ReturnType<typeof drizzle>;
 
-// Enable WAL mode for better concurrent access
-sqlite.pragma('journal_mode = WAL');
+// Lazy initialization function
+const initDB = () => {
+  if (!sqlite) {
+    const dbPath = getDbPath();
+    console.log('[DB] Connecting to database at:', dbPath);
+    
+    sqlite = new Database(dbPath);
+    
+    // Enable WAL mode for better concurrent access
+    sqlite.pragma('journal_mode = WAL');
+    
+    db = drizzle(sqlite, { schema });
+  }
+  return { db, sqlite };
+};
 
-export const db = drizzle(sqlite, { schema });
-
-// Export the SQLite instance for raw queries if needed
-export { sqlite };
+// Export getter functions instead of direct instances
+export const getDB = () => initDB().db;
+export const getSQLite = () => initDB().sqlite;
 
 // Utility function to initialize the database with default data
 export async function initializeDatabase() {
   try {
+    const { db } = initDB();
+    
     // Check if we need to seed default admin settings
     const existingSettings = await db.select().from(schema.adminSettings).limit(1);
     
@@ -92,11 +108,15 @@ Generate a detailed session summary that would be valuable for the user's financ
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-  sqlite.close();
+  if (sqlite) {
+    sqlite.close();
+  }
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  sqlite.close();
+  if (sqlite) {
+    sqlite.close();
+  }
   process.exit(0);
 });

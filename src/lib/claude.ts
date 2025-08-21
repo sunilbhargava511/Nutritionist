@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Article, Message } from '@/types';
-import { db } from './database';
+import { getDB } from './database';
 import * as schema from './database/schema';
 import { eq, and } from 'drizzle-orm';
 
@@ -17,7 +17,7 @@ export class ClaudeService {
   // Load prompt from database by type
   private async getPrompt(type: 'content' | 'qa' | 'report'): Promise<string> {
     try {
-      const prompt = await db.select().from(schema.systemPrompts)
+      const prompt = const db = getDB(); await db.select().from(schema.systemPrompts)
         .where(and(
           eq(schema.systemPrompts.type, type),
           eq(schema.systemPrompts.active, true)

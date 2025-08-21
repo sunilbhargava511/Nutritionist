@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/database';
+import { getDB } from '@/lib/database';
 import * as schema from '@/lib/database/schema';
 
 export async function GET(request: NextRequest) {
@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     // Optional: Check database connectivity
     try {
       // Simple query to verify database is accessible
+      const db = getDB();
       await db.select().from(schema.adminSettings).limit(1);
       health['database'] = 'connected';
     } catch (dbError) {

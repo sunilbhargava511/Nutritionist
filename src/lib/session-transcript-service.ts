@@ -1,4 +1,4 @@
-import { db } from './database';
+import { getDB } from './database';
 import * as schema from './database/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { Message } from '@/types';
@@ -44,9 +44,9 @@ export class SessionTranscriptService {
       status: 'active'
     };
 
-    await db.insert(schema.conversationSessions).values(newSession);
+    const db = getDB(); await db.insert(schema.conversationSessions).values(newSession);
     
-    const created = await db.select()
+    const created = const db = getDB(); await db.select()
       .from(schema.conversationSessions)
       .where(eq(schema.conversationSessions.id, sessionId))
       .limit(1);
@@ -60,7 +60,7 @@ export class SessionTranscriptService {
 
   // Get session by ID
   async getSession(sessionId: string): Promise<schema.ConversationSession | null> {
-    const sessions = await db.select()
+    const sessions = const db = getDB(); await db.select()
       .from(schema.conversationSessions)
       .where(eq(schema.conversationSessions.id, sessionId))
       .limit(1);
@@ -70,7 +70,7 @@ export class SessionTranscriptService {
 
   // Get session by ElevenLabs conversation ID
   async getSessionByElevenLabsId(conversationId: string): Promise<schema.ConversationSession | null> {
-    const sessions = await db.select()
+    const sessions = const db = getDB(); await db.select()
       .from(schema.conversationSessions)
       .where(eq(schema.conversationSessions.elevenlabsConversationId, conversationId))
       .limit(1);
@@ -80,7 +80,7 @@ export class SessionTranscriptService {
 
   // Update session
   async updateSession(sessionId: string, updates: Partial<schema.ConversationSession>): Promise<void> {
-    await db.update(schema.conversationSessions)
+    const db = getDB(); await db.update(schema.conversationSessions)
       .set({
         ...updates,
         updatedAt: new Date().toISOString()
@@ -136,9 +136,9 @@ export class SessionTranscriptService {
       metadata: messageData.metadata ? JSON.stringify(messageData.metadata) : null
     };
 
-    await db.insert(schema.conversationMessages).values(newMessage);
+    const db = getDB(); await db.insert(schema.conversationMessages).values(newMessage);
     
-    const created = await db.select()
+    const created = const db = getDB(); await db.select()
       .from(schema.conversationMessages)
       .where(eq(schema.conversationMessages.id, messageId))
       .limit(1);
@@ -163,7 +163,7 @@ export class SessionTranscriptService {
 
   // Get complete session transcript
   async getCompleteTranscript(sessionId: string): Promise<SessionTranscriptMessage[]> {
-    const messages = await db.select()
+    const messages = const db = getDB(); await db.select()
       .from(schema.conversationMessages)
       .where(eq(schema.conversationMessages.sessionId, sessionId))
       .orderBy(schema.conversationMessages.timestamp);
@@ -276,7 +276,7 @@ export class SessionTranscriptService {
 
   // Get recent sessions
   async getRecentSessions(limit: number = 10): Promise<schema.ConversationSession[]> {
-    return await db.select()
+    return const db = getDB(); await db.select()
       .from(schema.conversationSessions)
       .orderBy(desc(schema.conversationSessions.updatedAt))
       .limit(limit);
@@ -284,7 +284,7 @@ export class SessionTranscriptService {
 
   // Get active sessions
   async getActiveSessions(): Promise<schema.ConversationSession[]> {
-    return await db.select()
+    return const db = getDB(); await db.select()
       .from(schema.conversationSessions)
       .where(eq(schema.conversationSessions.status, 'active'))
       .orderBy(desc(schema.conversationSessions.updatedAt));

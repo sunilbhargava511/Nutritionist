@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { Message, SessionNote, Article } from '@/types';
 import { knowledgeSearch, SearchResult } from './knowledge-search';
 import { ERROR_MESSAGES } from './system-prompts';
-import { db } from './database';
+import { getDB } from './database';
 import * as schema from './database/schema';
 import { eq, and } from 'drizzle-orm';
 import { debugDatabaseService } from './debug-database-service';
@@ -66,7 +66,7 @@ export class EnhancedClaudeService {
   // Load prompt from database by type
   private async getPrompt(type: 'content' | 'qa' | 'report'): Promise<string> {
     try {
-      const prompt = await db.select().from(schema.systemPrompts)
+      const prompt = const db = getDB(); await db.select().from(schema.systemPrompts)
         .where(and(
           eq(schema.systemPrompts.type, type),
           eq(schema.systemPrompts.active, true)

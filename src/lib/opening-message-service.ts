@@ -1,4 +1,4 @@
-import { db } from './database';
+import { getDB } from './database';
 import * as schema from './database/schema';
 import { eq, and } from 'drizzle-orm';
 import { audioCacheService, AudioGenerationOptions } from './audio-cache-service';
@@ -28,7 +28,7 @@ export interface OpeningMessageWithAudio extends schema.OpeningMessage {
 export class OpeningMessageService {
   // Get general opening message with audio cache
   async getGeneralOpeningMessage(): Promise<OpeningMessageWithAudio | null> {
-    const messages = await db.select()
+    const messages = const db = getDB(); await db.select()
       .from(schema.openingMessages)
       .where(
         and(
@@ -46,7 +46,7 @@ export class OpeningMessageService {
 
   // Get lesson intro message with audio cache
   async getLessonIntroMessage(lessonId: string): Promise<OpeningMessageWithAudio | null> {
-    const messages = await db.select()
+    const messages = const db = getDB(); await db.select()
       .from(schema.openingMessages)
       .where(
         and(
@@ -70,7 +70,7 @@ export class OpeningMessageService {
     generateAudio: boolean = true
   ): Promise<OpeningMessageWithAudio> {
     // First, deactivate existing general opening messages
-    await db.update(schema.openingMessages)
+    const db = getDB(); await db.update(schema.openingMessages)
       .set({ active: false })
       .where(eq(schema.openingMessages.type, 'general_opening'));
 
@@ -85,7 +85,7 @@ export class OpeningMessageService {
       active: true
     };
 
-    await db.insert(schema.openingMessages).values(newMessage);
+    const db = getDB(); await db.insert(schema.openingMessages).values(newMessage);
     
     // Generate audio if requested
     if (generateAudio) {
@@ -101,7 +101,7 @@ export class OpeningMessageService {
       }
     }
     
-    const created = await db.select()
+    const created = const db = getDB(); await db.select()
       .from(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId))
       .limit(1);
@@ -121,7 +121,7 @@ export class OpeningMessageService {
     generateAudio: boolean = true
   ): Promise<OpeningMessageWithAudio> {
     // First, deactivate existing lesson intro messages for this lesson
-    await db.update(schema.openingMessages)
+    const db = getDB(); await db.update(schema.openingMessages)
       .set({ active: false })
       .where(
         and(
@@ -142,7 +142,7 @@ export class OpeningMessageService {
       active: true
     };
 
-    await db.insert(schema.openingMessages).values(newMessage);
+    const db = getDB(); await db.insert(schema.openingMessages).values(newMessage);
     
     // Generate audio if requested
     if (generateAudio) {
@@ -158,7 +158,7 @@ export class OpeningMessageService {
       }
     }
     
-    const created = await db.select()
+    const created = const db = getDB(); await db.select()
       .from(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId))
       .limit(1);
@@ -172,7 +172,7 @@ export class OpeningMessageService {
 
   // Get all lesson intro messages
   async getAllLessonIntroMessages(): Promise<schema.OpeningMessage[]> {
-    return await db.select()
+    return const db = getDB(); await db.select()
       .from(schema.openingMessages)
       .where(
         and(
@@ -184,7 +184,7 @@ export class OpeningMessageService {
 
   // Delete opening message
   async deleteOpeningMessage(messageId: string): Promise<void> {
-    await db.delete(schema.openingMessages)
+    const db = getDB(); await db.delete(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId));
   }
 
@@ -229,7 +229,7 @@ export class OpeningMessageService {
 
   // Update opening message content only
   async updateMessageContent(messageId: string, messageContent: string): Promise<void> {
-    await db.update(schema.openingMessages)
+    const db = getDB(); await db.update(schema.openingMessages)
       .set({ 
         messageContent,
         updatedAt: new Date().toISOString()
@@ -239,7 +239,7 @@ export class OpeningMessageService {
 
   // Update voice settings only
   async updateVoiceSettings(messageId: string, voiceSettings: VoiceSettings): Promise<void> {
-    await db.update(schema.openingMessages)
+    const db = getDB(); await db.update(schema.openingMessages)
       .set({ 
         voiceSettings: JSON.stringify(voiceSettings),
         updatedAt: new Date().toISOString()
@@ -268,7 +268,7 @@ export class OpeningMessageService {
 
   // Force regenerate audio for a message
   async regenerateAudio(messageId: string): Promise<void> {
-    const message = await db.select()
+    const message = const db = getDB(); await db.select()
       .from(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId))
       .limit(1);
@@ -315,7 +315,7 @@ export class OpeningMessageService {
 
   // Check if message needs audio regeneration
   async needsAudioRegeneration(messageId: string): Promise<boolean> {
-    const message = await db.select()
+    const message = const db = getDB(); await db.select()
       .from(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId))
       .limit(1);

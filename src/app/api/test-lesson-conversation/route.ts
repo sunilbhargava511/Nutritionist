@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lessonService } from '@/lib/lesson-service';
-import { db } from '@/lib/database';
+import { getDB } from '@/lib/database';
 import * as schema from '@/lib/database/schema';
 
 export async function POST(request: NextRequest) {
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const testSession = await lessonService.createUserSession('test_user');
 
     // Create lesson conversation record directly
-    const lessonConversation = await db.insert(schema.lessonConversations).values({
+    const lessonConversation = const db = getDB(); await db.insert(schema.lessonConversations).values({
       id: `test_conv_${Date.now()}`,
       sessionId: testSession.id,
       lessonId: lessonId,

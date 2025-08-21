@@ -1,7 +1,7 @@
 import { getClaudeService } from './claude-enhanced';
 import { sessionTranscriptService } from './session-transcript-service';
 import { lessonService } from './lesson-service';
-import { db } from './database';
+import { getDB } from './database';
 import * as schema from './database/schema';
 import { eq, and } from 'drizzle-orm';
 

@@ -1,4 +1,4 @@
-import { db } from './database';
+import { getDB } from './database';
 import * as schema from './database/schema';
 import { eq, asc, desc } from 'drizzle-orm';
 import { 
@@ -26,7 +26,7 @@ export class AdminService {
     
     if (!existingSettings) {
       // Create new settings if none exist
-      await db.insert(schema.adminSettings).values({
+      const db = getDB(); await db.insert(schema.adminSettings).values({
         id: 'default',
         voiceId: updates.voiceId || 'pNInz6obpgDQGcFmaJgB',
         voiceDescription: updates.voiceDescription || 'Professional voice',
@@ -78,7 +78,7 @@ export class AdminService {
       .where(eq(schema.systemPrompts.type, type));
 
     // Insert new prompt
-    const newPrompt = await db.insert(schema.systemPrompts).values({
+    const newPrompt = const db = getDB(); await db.insert(schema.systemPrompts).values({
       id: promptId,
       type,
       content,
@@ -115,7 +115,7 @@ export class AdminService {
     const content = await file.text();
     const fileId = `kb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    const newFile = await db.insert(schema.knowledgeBaseFiles).values({
+    const newFile = const db = getDB(); await db.insert(schema.knowledgeBaseFiles).values({
       id: fileId,
       filename: file.name,
       content,

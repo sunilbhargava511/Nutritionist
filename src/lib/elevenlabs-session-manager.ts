@@ -3,7 +3,7 @@
  * Database-backed implementation for production deployment
  */
 
-import { db } from '@/lib/database';
+import { getDB } from '@/lib/database';
 import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { eq } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
@@ -52,7 +52,7 @@ class DatabaseStorageAdapter {
   private async initializeTable(): Promise<void> {
     try {
       // Create table if it doesn't exist
-      await db.run(sql`
+      const db = getDB(); await db.run(sql`
         CREATE TABLE IF NOT EXISTS elevenlabs_sessions (
           id TEXT PRIMARY KEY,
           session_id TEXT NOT NULL,
@@ -76,20 +76,20 @@ class DatabaseStorageAdapter {
       const serializedData = JSON.stringify(data);
       const now = new Date().toISOString();
       
-      const existing = await db.select()
+      const existing = const db = getDB(); await db.select()
         .from(elevenlabsSessions)
         .where(eq(elevenlabsSessions.id, key))
         .limit(1);
 
       if (existing.length > 0) {
-        await db.update(elevenlabsSessions)
+        const db = getDB(); await db.update(elevenlabsSessions)
           .set({ 
             metadata: serializedData,
             updatedAt: now
           })
           .where(eq(elevenlabsSessions.id, key));
       } else {
-        await db.insert(elevenlabsSessions).values({
+        const db = getDB(); await db.insert(elevenlabsSessions).values({
           id: key,
           sessionId: key,
           registeredAt: now,
@@ -107,7 +107,7 @@ class DatabaseStorageAdapter {
 
   async load<T>(key: string): Promise<T | null> {
     try {
-      const result = await db.select()
+      const result = const db = getDB(); await db.select()
         .from(elevenlabsSessions)
         .where(eq(elevenlabsSessions.id, key))
         .limit(1);
@@ -126,7 +126,7 @@ class DatabaseStorageAdapter {
 
   async delete(key: string): Promise<void> {
     try {
-      await db.delete(elevenlabsSessions)
+      const db = getDB(); await db.delete(elevenlabsSessions)
         .where(eq(elevenlabsSessions.id, key));
     } catch (error) {
       console.error(`[DatabaseStorageAdapter] Error deleting ${key}:`, error);
@@ -135,7 +135,7 @@ class DatabaseStorageAdapter {
 
   async exists(key: string): Promise<boolean> {
     try {
-      const result = await db.select({ id: elevenlabsSessions.id })
+      const result = const db = getDB(); await db.select({ id: elevenlabsSessions.id })
         .from(elevenlabsSessions)
         .where(eq(elevenlabsSessions.id, key))
         .limit(1);

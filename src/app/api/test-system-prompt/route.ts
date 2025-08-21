@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/database';
+import { getDB } from '@/lib/database';
 import * as schema from '@/lib/database/schema';
 
 export async function POST(request: NextRequest) {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create lesson-specific system prompt
-    const systemPrompt = await db.insert(schema.systemPrompts).values({
+    const systemPrompt = const db = getDB(); await db.insert(schema.systemPrompts).values({
       id: `prompt_${Date.now()}`,
       type: 'lesson_qa',
       lessonId: lessonId,

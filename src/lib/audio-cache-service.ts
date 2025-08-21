@@ -1,4 +1,4 @@
-import { db } from './database';
+import { getDB } from './database';
 import * as schema from './database/schema';
 import { eq, sql } from 'drizzle-orm';
 import crypto from 'crypto';
@@ -37,7 +37,7 @@ export class AudioCacheService {
    * Check if audio needs regeneration based on content/settings changes
    */
   async needsRegeneration(messageId: string, content: string, voiceSettings: any): Promise<boolean> {
-    const message = await db.select()
+    const message = const db = getDB(); await db.select()
       .from(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId))
       .limit(1);
@@ -131,7 +131,7 @@ export class AudioCacheService {
     const now = new Date().toISOString();
     
     // Update opening message with cached audio
-    await db.update(schema.openingMessages)
+    const db = getDB(); await db.update(schema.openingMessages)
       .set({
         audioBlob: audioData,
         audioHash: audioHash,
@@ -143,7 +143,7 @@ export class AudioCacheService {
     
     // Also store in audio_cache table for redundancy
     const cacheId = `cache_${messageId}_${Date.now()}`;
-    await db.insert(schema.audioCache).values({
+    const db = getDB(); await db.insert(schema.audioCache).values({
       id: cacheId,
       messageId: messageId,
       audioData: audioData,
@@ -164,7 +164,7 @@ export class AudioCacheService {
    * Get cached audio for a message
    */
   async getCachedAudio(messageId: string): Promise<CachedAudio | null> {
-    const message = await db.select()
+    const message = const db = getDB(); await db.select()
       .from(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId))
       .limit(1);
@@ -184,7 +184,7 @@ export class AudioCacheService {
     
     // Update access count if audio exists
     if (msg.audioBlob) {
-      await db.update(schema.audioCache)
+      const db = getDB(); await db.update(schema.audioCache)
         .set({
           accessedAt: new Date().toISOString(),
           accessCount: sql`${schema.audioCache.accessCount} + 1`
@@ -240,7 +240,7 @@ export class AudioCacheService {
     succeeded: number;
     failed: number;
   }> {
-    const messages = await db.select().from(schema.openingMessages);
+    const messages = const db = getDB(); await db.select().from(schema.openingMessages);
     
     let succeeded = 0;
     let failed = 0;
@@ -278,12 +278,12 @@ export class AudioCacheService {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysOld);
     
-    const oldEntries = await db.select()
+    const oldEntries = const db = getDB(); await db.select()
       .from(schema.audioCache)
       .where(sql`${schema.audioCache.accessedAt} < ${cutoffDate.toISOString()}`);
     
     if (oldEntries.length > 0) {
-      await db.delete(schema.audioCache)
+      const db = getDB(); await db.delete(schema.audioCache)
         .where(sql`${schema.audioCache.accessedAt} < ${cutoffDate.toISOString()}`);
     }
     
@@ -306,10 +306,10 @@ export class AudioCacheService {
     totalCacheSize: number;
     averageDuration: number;
   }> {
-    const messages = await db.select().from(schema.openingMessages);
+    const messages = const db = getDB(); await db.select().from(schema.openingMessages);
     const cached = messages.filter(m => m.audioBlob);
     
-    const cacheEntries = await db.select().from(schema.audioCache);
+    const cacheEntries = const db = getDB(); await db.select().from(schema.audioCache);
     const totalSize = cacheEntries.reduce((sum, entry) => sum + (entry.sizeBytes || 0), 0);
     const totalDuration = cached.reduce((sum, msg) => sum + (msg.audioDuration || 0), 0);
     
