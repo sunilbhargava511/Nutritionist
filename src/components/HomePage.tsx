@@ -39,7 +39,45 @@ export default function HomePage() {
   useEffect(() => {
     // Load recent sessions
     const sessions = EnhancedSessionStorage.getAllSessions().slice(0, 5);
-    setRecentSessions(sessions);
+    
+    // Add mock conversations if no real sessions exist
+    if (sessions.length === 0) {
+      const mockSessions = [
+        {
+          id: 'mock_1',
+          title: 'Meal Planning for Busy Week',
+          updatedAt: new Date(),
+          summary: 'Discussed quick breakfast options and meal prep strategies for your upcoming conference week...',
+          messages: [],
+          notes: [],
+          createdAt: new Date(),
+          isActive: false
+        },
+        {
+          id: 'mock_2', 
+          title: 'Post-Workout Nutrition',
+          updatedAt: new Date(Date.now() - 86400000), // Yesterday
+          summary: 'Covered protein timing, hydration needs, and specific snack recommendations for your training schedule...',
+          messages: [],
+          notes: [],
+          createdAt: new Date(Date.now() - 86400000),
+          isActive: false
+        },
+        {
+          id: 'mock_3',
+          title: 'Managing Sugar Cravings',
+          updatedAt: new Date(Date.now() - 7 * 86400000), // Week ago
+          summary: 'Explored strategies for reducing afternoon sugar cravings and healthier alternative snacks...',
+          messages: [],
+          notes: [],
+          createdAt: new Date(Date.now() - 7 * 86400000),
+          isActive: false
+        }
+      ];
+      setRecentSessions(mockSessions);
+    } else {
+      setRecentSessions(sessions);
+    }
     
     // Load lessons
     loadLessons();
@@ -50,10 +88,79 @@ export default function HomePage() {
       const response = await fetch('/api/lessons?activeOnly=true');
       if (response.ok) {
         const data = await response.json();
-        setLessons(data.lessons || []);
+        if (data.lessons && data.lessons.length > 0) {
+          setLessons(data.lessons);
+        } else {
+          // Add mock lessons if none exist
+          setLessons([
+            {
+              id: 'mock_lesson_1',
+              title: 'Building Balanced Meals',
+              videoUrl: '',
+              videoSummary: 'Learn how to create nutritionally balanced meals',
+              orderIndex: 0,
+              active: true,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            },
+            {
+              id: 'mock_lesson_2', 
+              title: 'Protein Sources Guide',
+              videoUrl: '',
+              videoSummary: 'Comprehensive guide to protein sources',
+              orderIndex: 1,
+              active: true,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            },
+            {
+              id: 'mock_lesson_3',
+              title: 'Smart Snacking Strategies', 
+              videoUrl: '',
+              videoSummary: 'Healthy snacking strategies and options',
+              orderIndex: 2,
+              active: true,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            }
+          ]);
+        }
       }
     } catch (error) {
       console.error('Failed to load lessons:', error);
+      // Add mock lessons on error too
+      setLessons([
+        {
+          id: 'mock_lesson_1',
+          title: 'Building Balanced Meals',
+          videoUrl: '',
+          videoSummary: 'Learn how to create nutritionally balanced meals',
+          orderIndex: 0,
+          active: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: 'mock_lesson_2', 
+          title: 'Protein Sources Guide',
+          videoUrl: '',
+          videoSummary: 'Comprehensive guide to protein sources', 
+          orderIndex: 1,
+          active: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: 'mock_lesson_3',
+          title: 'Smart Snacking Strategies',
+          videoUrl: '',
+          videoSummary: 'Healthy snacking strategies and options',
+          orderIndex: 2,
+          active: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ]);
     }
   };
 
@@ -172,17 +279,17 @@ export default function HomePage() {
   const stats = getProgressStats();
   
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ backgroundColor: '#f8fafb', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif' }}>
       {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
+      <header className="bg-white sticky top-0 z-50" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <div className="max-w-6xl mx-auto px-5 py-4">
           <div className="flex items-center justify-between">
-            <div className="text-2xl font-bold text-emerald-700">
+            <div className="text-2xl font-bold" style={{ color: '#2d7d46' }}>
               NutritionAssist
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-gray-700">Hi, {userName}</span>
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-700 to-emerald-500 rounded-full flex items-center justify-center text-white font-semibold">
+              <span style={{ color: '#1a1a1a' }}>Hi, {userName}</span>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold" style={{ background: 'linear-gradient(135deg, #2d7d46, #4ca666)' }}>
                 {userName.charAt(0)}
               </div>
             </div>
@@ -194,31 +301,43 @@ export default function HomePage() {
       <main className="max-w-6xl mx-auto px-5 py-8">
         {/* Welcome Section */}
         <div className="mb-10">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold mb-2" style={{ color: '#1a1a1a' }}>
             Welcome back, {userName}!
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="text-lg" style={{ color: '#666' }}>
             Ready to continue your nutrition journey?
           </p>
         </div>
 
         {/* Quick Start Card */}
-        <div className="bg-gradient-to-br from-emerald-700 to-emerald-500 rounded-3xl p-10 text-white mb-10 relative overflow-hidden">
-          <div className="absolute -top-12 -right-12 w-48 h-48 bg-white bg-opacity-10 rounded-full"></div>
+        <div 
+          className="rounded-2xl p-10 text-white mb-10 relative overflow-hidden" 
+          style={{ background: 'linear-gradient(135deg, #2d7d46 0%, #4ca666 100%)' }}
+        >
+          <div 
+            className="absolute w-48 h-48 rounded-full" 
+            style={{ 
+              right: '-50px', 
+              top: '-50px', 
+              background: 'rgba(255,255,255,0.1)' 
+            }}
+          ></div>
           <div className="relative z-10">
             <h2 className="text-3xl font-bold mb-3">
               Start a Conversation
             </h2>
-            <p className="text-lg mb-6 opacity-90">
+            <p className="text-lg mb-6" style={{ opacity: 0.9 }}>
               Ask any nutrition question or get personalized guidance from Dr. Smith
             </p>
             <button
               onClick={handleStartNewSession}
-              className="bg-white text-emerald-700 px-8 py-4 text-lg font-semibold rounded-xl hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex items-center gap-3"
+              className="bg-white px-8 py-4 text-lg font-semibold rounded-xl flex items-center gap-3 hover:shadow-lg hover:-translate-y-1 transition-all duration-200" 
+              style={{ color: '#2d7d46' }}
             >
-              <div className="w-6 h-6 bg-emerald-700 rounded-full flex items-center justify-center">
-                <Mic className="w-4 h-4 text-white" />
-              </div>
+              <div 
+                className="w-6 h-6 rounded-full" 
+                style={{ backgroundColor: '#2d7d46' }}
+              ></div>
               Start Talking
             </button>
           </div>
@@ -226,54 +345,14 @@ export default function HomePage() {
 
         {/* Dashboard Grid */}
         <div className="grid lg:grid-cols-2 gap-6 mb-10">
-          {/* Recommended Lessons */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-xl font-semibold text-gray-900">Recommended Lessons</h3>
-              <button 
-                onClick={() => setCurrentView('knowledge')}
-                className="text-emerald-700 text-sm font-medium hover:text-emerald-800"
-              >
-                Browse all →
-              </button>
-            </div>
-            <div className="space-y-3">
-              {lessons.slice(0, 3).map((lesson) => (
-                <div 
-                  key={lesson.id}
-                  onClick={() => handleLessonClick(lesson)}
-                  className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
-                >
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center text-2xl">
-                    🥗
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900 mb-1">
-                      {lesson.title}
-                    </div>
-                    <div className="text-sm text-gray-600 flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      15 min lesson
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {lessons.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                  <p>No lessons available yet</p>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Recent Conversations */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-xl font-semibold text-gray-900">Recent Conversations</h3>
+              <h3 className="text-xl font-semibold" style={{ color: '#1a1a1a' }}>Recent Conversations</h3>
               <button 
                 onClick={() => setCurrentView('sessions')}
-                className="text-emerald-700 text-sm font-medium hover:text-emerald-800"
+                className="text-sm font-medium" 
+                style={{ color: '#2d7d46' }}
               >
                 View all →
               </button>
@@ -283,97 +362,137 @@ export default function HomePage() {
                 <div 
                   key={session.id}
                   onClick={handleLoadSession}
-                  className="p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
+                  className="p-4 rounded-xl cursor-pointer transition-colors" 
+                  style={{ backgroundColor: '#f8fafb' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0f4f6'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8fafb'}
                 >
-                  <div className="text-xs text-gray-500 mb-1">
+                  <div className="text-xs mb-1" style={{ color: '#999' }}>
                     {session.updatedAt instanceof Date 
                       ? session.updatedAt.toLocaleDateString()
                       : new Date(session.updatedAt).toLocaleDateString()
                     }
                   </div>
-                  <div className="font-medium text-gray-900 mb-1">
+                  <div className="font-medium mb-1" style={{ color: '#1a1a1a' }}>
                     {session.title}
                   </div>
-                  <div className="text-sm text-gray-600 line-clamp-2">
+                  <div className="text-sm line-clamp-2" style={{ color: '#666' }}>
                     {session.summary || `${session.messages.length} messages exchanged`}
                   </div>
                 </div>
               ))}
               {recentSessions.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8" style={{ color: '#999' }}>
                   <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-30" />
                   <p>No recent conversations</p>
                 </div>
               )}
             </div>
           </div>
+
+          {/* Recommended Lessons */}
+          <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-xl font-semibold" style={{ color: '#1a1a1a' }}>Recommended Lessons</h3>
+              <button 
+                onClick={() => setCurrentView('knowledge')}
+                className="text-sm font-medium" 
+                style={{ color: '#2d7d46' }}
+              >
+                Browse all →
+              </button>
+            </div>
+            <div className="space-y-3">
+              {lessons.slice(0, 3).map((lesson, index) => {
+                const icons = ['🥗', '💪', '🍎'];
+                return (
+                  <div 
+                    key={lesson.id}
+                    onClick={() => handleLessonClick(lesson)}
+                    className="flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-colors" 
+                    style={{ backgroundColor: '#f8fafb' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0f4f6'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8fafb'}
+                  >
+                    <div 
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" 
+                      style={{ background: 'linear-gradient(135deg, #e8f5e9, #c8e6c9)' }}
+                    >
+                      {icons[index] || '🥗'}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium mb-1" style={{ color: '#1a1a1a' }}>
+                        {lesson.title}
+                      </div>
+                      <div className="text-sm" style={{ color: '#666' }}>
+                        15 min lesson
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {lessons.length === 0 && (
+                <div className="text-center py-8" style={{ color: '#999' }}>
+                  <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                  <p>No lessons available yet</p>
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
 
         {/* Progress Overview */}
-        <div className="bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl p-6 shadow-sm">
+        <div 
+          className="bg-white rounded-2xl p-6 col-span-full" 
+          style={{ 
+            background: 'linear-gradient(135deg, #f3e5f5, #e1bee7)', 
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)' 
+          }}
+        >
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-gray-900">Your Progress</h3>
-            <button className="text-emerald-700 text-sm font-medium hover:text-emerald-800">
+            <h3 className="text-xl font-semibold" style={{ color: '#1a1a1a' }}>Your Progress</h3>
+            <button className="text-sm font-medium" style={{ color: '#2d7d46' }}>
               View details →
             </button>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div className="text-center">
-              <div className="text-3xl font-bold text-purple-700 mb-1">
+              <div className="text-3xl font-bold mb-1" style={{ color: '#6a1b9a' }}>
                 {stats.conversationsThisMonth}
               </div>
-              <div className="text-sm text-gray-600">Conversations This Month</div>
+              <div className="text-sm" style={{ color: '#666' }}>Conversations This Month</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-purple-700 mb-1">
+              <div className="text-3xl font-bold mb-1" style={{ color: '#6a1b9a' }}>
                 {stats.completedLessons}
               </div>
-              <div className="text-sm text-gray-600">Lessons Completed</div>
+              <div className="text-sm" style={{ color: '#666' }}>Lessons Completed</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-purple-700 mb-1">
+              <div className="text-3xl font-bold mb-1" style={{ color: '#6a1b9a' }}>
                 {stats.goalsAchieved}
               </div>
-              <div className="text-sm text-gray-600">Goals Achieved</div>
+              <div className="text-sm" style={{ color: '#666' }}>Goals Achieved</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-purple-700 mb-1">
+              <div className="text-3xl font-bold mb-1" style={{ color: '#6a1b9a' }}>
                 {stats.weekStreak}
               </div>
-              <div className="text-sm text-gray-600">Week Streak</div>
+              <div className="text-sm" style={{ color: '#666' }}>Week Streak</div>
             </div>
           </div>
-          <div className="bg-white bg-opacity-50 rounded-xl h-48 flex items-center justify-center text-gray-500">
+          <div 
+            className="rounded-xl h-48 flex items-center justify-center" 
+            style={{ 
+              background: 'rgba(255,255,255,0.5)', 
+              color: '#999' 
+            }}
+          >
             [Progress visualization would go here]
           </div>
         </div>
         
-        {/* Quick Actions */}
-        <div className="mt-8 text-center">
-          <div className="flex flex-wrap justify-center gap-3">
-            <button
-              onClick={() => setCurrentView('knowledge')}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <BookOpen className="w-4 h-4" />
-              Nutrition Library
-            </button>
-            <button
-              onClick={() => setCurrentView('sessions')}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <History className="w-4 h-4" />
-              Session History
-            </button>
-            <a
-              href="/admin"
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <Settings className="w-4 h-4" />
-              Admin Panel
-            </a>
-          </div>
-        </div>
       </main>
     </div>
   );
