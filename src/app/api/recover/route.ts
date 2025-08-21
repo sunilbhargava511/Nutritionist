@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sqlite } from '@/lib/database';
+import { getSQLite } from '@/lib/database';
 
 export async function POST(request: NextRequest) {
   try {
     console.log('🔄 Starting database recovery...');
     
+    const sqlite = getSQLite();
     const body = await request.json();
     const { action, statements, metadata } = body;
     

@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
-import { sqlite } from '@/lib/database';
+import { getSQLite } from '@/lib/database';
 
 export async function POST() {
   try {
     console.log('🔄 Starting fresh database initialization...');
+    
+    const sqlite = getSQLite();
 
     // Create all required tables from scratch
     console.log('📋 Creating lessons table...');
@@ -320,6 +322,8 @@ Generate a detailed session summary that would be valuable for the user''s finan
 
 export async function GET() {
   try {
+    const sqlite = getSQLite();
+    
     // Return current database status
     const tables = sqlite.prepare(`
       SELECT name FROM sqlite_master WHERE type='table' ORDER BY name

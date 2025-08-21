@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sqlite } from '@/lib/database';
+import { getSQLite } from '@/lib/database';
 
 export async function POST(request: NextRequest) {
   try {
     console.log('Starting database migration...');
+    
+    const sqlite = getSQLite();
     
     // Check if lesson_id column exists in system_prompts table
     const tableInfo = sqlite.prepare(`PRAGMA table_info(system_prompts)`).all();

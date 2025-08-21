@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sqlite } from '@/lib/database';
+import { getSQLite } from '@/lib/database';
 
 export async function GET(request: Request) {
   try {
@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
     // Get cached audio files with metadata
+    const sqlite = getSQLite();
     const audioFiles = sqlite.prepare(`
       SELECT 
         id,
