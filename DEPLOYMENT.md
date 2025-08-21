@@ -23,15 +23,19 @@ Railway provides a simple, modern platform for deploying Next.js applications wi
    git push -u origin main
    ```
 
-2. **Connect to Railway**
+2. **Create Railway Project & Service**
    - Go to [railway.app](https://railway.app)
    - Click "New Project"
-   - Select "Deploy from GitHub repo"
-   - Choose your repository
-   - Railway will automatically detect the Next.js app
+   - Choose "Empty Project" to start fresh
+   - Inside the project, click "+ New" button
+   - Select "GitHub Repo" to create a service
+   - Connect your GitHub account if needed
+   - Choose `sunilbhargava511/Nutritionist` repository
+   - Railway will automatically detect the Next.js app and create a service
 
 3. **Configure Environment Variables**
-   - Go to your project's Settings → Variables
+   - Click on your service (it will have your repo name)
+   - Go to the "Variables" tab
    - Add the following required variables:
      ```
      ANTHROPIC_API_KEY=sk-ant-api...
@@ -87,10 +91,11 @@ Railway provides a simple, modern platform for deploying Next.js applications wi
 
 The app uses SQLite by default, which works well for Railway. For production use with multiple instances, consider upgrading to PostgreSQL:
 
-1. **Add PostgreSQL to Railway**
-   - In your Railway project, click "New"
-   - Select "Database" → "PostgreSQL"
-   - Railway will automatically provision a database
+1. **Add PostgreSQL Service to Railway**
+   - In your Railway project dashboard, click "+ New"
+   - Select "Database" → "Add PostgreSQL"
+   - Railway will create a new PostgreSQL service
+   - The database service will appear alongside your app service
 
 2. **Update DATABASE_URL**
    - Railway automatically sets the `DATABASE_URL` variable

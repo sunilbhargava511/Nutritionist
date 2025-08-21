@@ -22,9 +22,11 @@ git push -u origin main
 
 1. Go to [railway.app](https://railway.app)
 2. Click **"New Project"**
-3. Select **"Deploy from GitHub repo"**
-4. Choose your repository
-5. Railway auto-detects Next.js app
+3. Select **"Empty Project"** (or "Deploy from GitHub repo")
+4. Inside the project, click **"+ New"** → **"GitHub Repo"**
+5. Select **"Configure GitHub App"** if first time
+6. Choose `sunilbhargava511/Nutritionist` repository
+7. Railway auto-detects Next.js app and creates a service
 
 ### 3. Set Environment Variables
 
