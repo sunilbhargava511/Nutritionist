@@ -12,6 +12,7 @@ export class AdminService {
 
   // Admin Settings Management
   async getAdminSettings(): Promise<AdminSettings | null> {
+    const db = getDB();
     const settings = await db
       .select()
       .from(schema.adminSettings)
