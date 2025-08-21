@@ -34,7 +34,8 @@ export async function POST(request: NextRequest) {
         const reportId = `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const reportPath = `/reports/${sessionId}/${reportId}.pdf`;
 
-        const db = getDB(); await db.insert(schema.sessionReports).values({
+        const db = getDB();
+    await db.insert(schema.sessionReports).values({
           id: reportId,
           sessionId,
           reportPath,

@@ -44,7 +44,8 @@ export class SessionTranscriptService {
       status: 'active'
     };
 
-    const db = getDB(); await db.insert(schema.conversationSessions).values(newSession);
+    const db = getDB();
+    await db.insert(schema.conversationSessions).values(newSession);
     
     const created = await getDB().select()
       .from(schema.conversationSessions)
@@ -80,7 +81,8 @@ export class SessionTranscriptService {
 
   // Update session
   async updateSession(sessionId: string, updates: Partial<schema.ConversationSession>): Promise<void> {
-    const db = getDB(); await db.update(schema.conversationSessions)
+    const db = getDB();
+    await db.update(schema.conversationSessions)
       .set({
         ...updates,
         updatedAt: new Date().toISOString()
@@ -136,7 +138,8 @@ export class SessionTranscriptService {
       metadata: messageData.metadata ? JSON.stringify(messageData.metadata) : null
     };
 
-    const db = getDB(); await db.insert(schema.conversationMessages).values(newMessage);
+    const db = getDB();
+    await db.insert(schema.conversationMessages).values(newMessage);
     
     const created = await getDB().select()
       .from(schema.conversationMessages)

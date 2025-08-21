@@ -52,7 +52,8 @@ class DatabaseStorageAdapter {
   private async initializeTable(): Promise<void> {
     try {
       // Create table if it doesn't exist
-      const db = getDB(); await db.run(sql`
+      const db = getDB();
+    await db.run(sql`
         CREATE TABLE IF NOT EXISTS elevenlabs_sessions (
           id TEXT PRIMARY KEY,
           session_id TEXT NOT NULL,
@@ -82,14 +83,16 @@ class DatabaseStorageAdapter {
         .limit(1);
 
       if (existing.length > 0) {
-        const db = getDB(); await db.update(elevenlabsSessions)
+        const db = getDB();
+    await db.update(elevenlabsSessions)
           .set({ 
             metadata: serializedData,
             updatedAt: now
           })
           .where(eq(elevenlabsSessions.id, key));
       } else {
-        const db = getDB(); await db.insert(elevenlabsSessions).values({
+        const db = getDB();
+    await db.insert(elevenlabsSessions).values({
           id: key,
           sessionId: key,
           registeredAt: now,
@@ -126,7 +129,8 @@ class DatabaseStorageAdapter {
 
   async delete(key: string): Promise<void> {
     try {
-      const db = getDB(); await db.delete(elevenlabsSessions)
+      const db = getDB();
+    await db.delete(elevenlabsSessions)
         .where(eq(elevenlabsSessions.id, key));
     } catch (error) {
       console.error(`[DatabaseStorageAdapter] Error deleting ${key}:`, error);
