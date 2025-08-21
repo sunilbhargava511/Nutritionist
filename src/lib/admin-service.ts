@@ -28,7 +28,7 @@ export class AdminService {
     if (!existingSettings) {
       // Create new settings if none exist
       const db = getDB();
-    await db.insert(schema.adminSettings).values({
+      await db.insert(schema.adminSettings).values({
         id: 'default',
         voiceId: updates.voiceId || 'pNInz6obpgDQGcFmaJgB',
         voiceDescription: updates.voiceDescription || 'Professional voice',

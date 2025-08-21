@@ -186,7 +186,7 @@ export class AudioCacheService {
     // Update access count if audio exists
     if (msg.audioBlob) {
       const db = getDB();
-    await db.update(schema.audioCache)
+      await db.update(schema.audioCache)
         .set({
           accessedAt: new Date().toISOString(),
           accessCount: sql`${schema.audioCache.accessCount} + 1`
@@ -286,7 +286,7 @@ export class AudioCacheService {
     
     if (oldEntries.length > 0) {
       const db = getDB();
-    await db.delete(schema.audioCache)
+      await db.delete(schema.audioCache)
         .where(sql`${schema.audioCache.accessedAt} < ${cutoffDate.toISOString()}`);
     }
     

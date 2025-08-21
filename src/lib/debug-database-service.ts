@@ -127,7 +127,7 @@ export class DebugDatabaseService {
       const sessionId = `debug_session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       const db = getDB();
-    await db.insert(schema.debugSessions).values({
+      await db.insert(schema.debugSessions).values({
         id: sessionId,
         title: `Debug Session ${new Date().toLocaleString()}`,
         isActive: true
@@ -158,7 +158,7 @@ export class DebugDatabaseService {
       const entryId = `debug_entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       const db = getDB();
-    await db.insert(schema.debugEntries).values({
+      await db.insert(schema.debugEntries).values({
         id: entryId,
         sessionId,
         type,

@@ -279,7 +279,8 @@ export class SessionTranscriptService {
 
   // Get recent sessions
   async getRecentSessions(limit: number = 10): Promise<schema.ConversationSession[]> {
-    const db = getDB(); return await db.select()
+    const db = getDB();
+    return await db.select()
       .from(schema.conversationSessions)
       .orderBy(desc(schema.conversationSessions.updatedAt))
       .limit(limit);
@@ -287,7 +288,8 @@ export class SessionTranscriptService {
 
   // Get active sessions
   async getActiveSessions(): Promise<schema.ConversationSession[]> {
-    const db = getDB(); return await db.select()
+    const db = getDB();
+    return await db.select()
       .from(schema.conversationSessions)
       .where(eq(schema.conversationSessions.status, 'active'))
       .orderBy(desc(schema.conversationSessions.updatedAt));
