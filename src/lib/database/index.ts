@@ -26,10 +26,80 @@ const initDB = () => {
     // Enable WAL mode for better concurrent access
     sqlite.pragma('journal_mode = WAL');
     
+    // Run initial table creation
+    createTables(sqlite);
+    
     db = drizzle(sqlite, { schema });
   }
   return { db, sqlite };
 };
+
+// Create tables if they don't exist
+function createTables(sqlite: Database.Database) {
+  try {
+    // Create admin_settings table
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS admin_settings (
+        id text PRIMARY KEY DEFAULT 'default' NOT NULL,
+        voice_id text DEFAULT 'pNInz6obpgDQGcFmaJgB' NOT NULL,
+        voice_description text DEFAULT 'Professional, clear voice for nutrition education' NOT NULL,
+        personalization_enabled integer DEFAULT false,
+        conversation_aware integer DEFAULT true,
+        use_structured_conversation integer DEFAULT true,
+        debug_llm_enabled integer DEFAULT false,
+        base_report_path text,
+        base_report_template blob,
+        updated_at text DEFAULT (CURRENT_TIMESTAMP)
+      )
+    `);
+    
+    // Create other essential tables
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS lessons (
+        id text PRIMARY KEY NOT NULL,
+        title text NOT NULL,
+        video_url text NOT NULL,
+        video_summary text NOT NULL,
+        start_message text,
+        order_index integer NOT NULL,
+        prerequisites text,
+        active integer DEFAULT true,
+        created_at text DEFAULT (CURRENT_TIMESTAMP),
+        updated_at text DEFAULT (CURRENT_TIMESTAMP)
+      )
+    `);
+    
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS system_prompts (
+        id text PRIMARY KEY NOT NULL,
+        type text NOT NULL,
+        content text NOT NULL,
+        lesson_id text,
+        active integer DEFAULT true,
+        created_at text DEFAULT (CURRENT_TIMESTAMP),
+        updated_at text DEFAULT (CURRENT_TIMESTAMP)
+      )
+    `);
+    
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS conversations (
+        id text PRIMARY KEY NOT NULL,
+        conversation_id text UNIQUE,
+        conversation_type text DEFAULT 'structured' NOT NULL,
+        user_id text,
+        completed integer DEFAULT false,
+        personalization_enabled integer DEFAULT false,
+        conversation_aware integer,
+        created_at text DEFAULT (CURRENT_TIMESTAMP),
+        updated_at text DEFAULT (CURRENT_TIMESTAMP)
+      )
+    `);
+    
+    console.log('[DB] Tables created successfully');
+  } catch (error) {
+    console.error('[DB] Error creating tables:', error);
+  }
+}
 
 // Export getter functions instead of direct instances
 export const getDB = () => initDB().db;
