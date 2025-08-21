@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Output mode - 'standalone' for Docker deployment
-  output: 'standalone',
+  // Output mode - comment out for standard deployment
+  // output: 'standalone',
   
   // Disable ESLint during build for deployment
   eslint: {
