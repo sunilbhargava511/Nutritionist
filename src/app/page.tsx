@@ -1,5 +1,5 @@
-import EnhancedUnifiedSessionInterface from '@/components/EnhancedUnifiedSessionInterface';
+import HomePage from '@/components/HomePage';
 
 export default function Home() {
-  return <EnhancedUnifiedSessionInterface />;
+  return <HomePage />;
 }
