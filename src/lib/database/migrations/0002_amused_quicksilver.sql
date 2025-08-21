@@ -1,0 +1,1 @@
+ALTER TABLE `admin_settings` ADD `educational_content_enabled` integer DEFAULT true;

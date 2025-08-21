@@ -1,0 +1,16 @@
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+CREATE TABLE lessons (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          video_url TEXT NOT NULL,
+          video_summary TEXT NOT NULL,
+          question TEXT NOT NULL,
+          prerequisites TEXT DEFAULT '[]',
+          order_index INTEGER DEFAULT 0,
+          active INTEGER DEFAULT 1,
+          created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+          updated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+        , start_message TEXT);
+INSERT INTO lessons VALUES('lesson_1755401286766_p0nhpo5bi','Why learn about Zero Financial anxiety Now? ','https://youtu.be/4FBivsDMyjo',replace('💡 Key Insight:\nMoney anxiety is real — with rent in metros, EMIs, job instability, and medical surprises. Most people drift through it. The smart ones set guardrails early — to reduce stress and stay free to make big life choices.\n\nThis 7-step playbook helps you:\n\n✅ Lower financial stress\n\n📈 Build wealth early through compounding\n\n🛣️ Keep freedom to choose career, relationships, and location\n\n👥 Real-Life:\n\nRamesh (age 25): Wants to leave his job in 3 years for a startup idea. He needs stability first.\n\nRadha (age 32): Breadwinner in her family. Wants wealth without risky bets.\n\n🧠 Mindset:\n\nSet a fixed floor (safety)\nThen chase a variable upside (growth)\n\n✅ Micro-action:\n\nCommit to completing all 7 steps. You’re already on your way.','\n',char(10)),replace('Are you ready to move on and explore the seven steps that can bring you closer to a zero-anxiety financial life?\n\nIf you are, just say: “Move to Step 1.”\nAnd if you have any questions, feel free to ask them before we continue.\n\nTake your time—there’s no rush. This is your journey, and we’ll move forward at the pace that feels right for you.','\n',char(10)),'[]',0,1,'2025-08-17T03:28:06.767Z','2025-08-18T19:03:20.343Z',replace('Hi… I’m really glad you’re here.\nThe fact that you’ve chosen to begin this conversation tells me something important—you care about finding peace of mind with your money. And that’s a wonderful first step.\n\nI’m your AI guide, created by Sanjay Bhargava… a financial educator with many years of experience, including leadership at Citibank, and being part of the founding team at PayPal.\n\nTogether, we’ll walk through seven simple, practical steps designed to reduce financial stress and bring you closer to what we call Zero Financial Anxiety.\n\nNow… just to be clear—this isn’t financial advice. Think of it as education. My goal is to give you clarity, confidence, and a roadmap.\n\nAt the end of our session, you’ll get three things: a PDF Report, a Summary, and a Full Transcript. These are yours to keep. You can use them on your own—or, even better, take them to a qualified financial advisor.\n\nHere’s a simple way to think about it. If you have a small fever, you can probably treat yourself. But for something more serious, you’d see a doctor—ideally with a clear brief of what’s going on. This conversation gives you that brief… so you can make the very best use of an advisor’s time.\n\nSo—if you’re ready to begin, our first topic is: “Why learn about financial anxiety now?”\nWhen you are, just say: Dive in.','\n',char(10)));
+COMMIT;

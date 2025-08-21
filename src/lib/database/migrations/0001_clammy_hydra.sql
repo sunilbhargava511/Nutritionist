@@ -1,0 +1,1 @@
+ALTER TABLE `admin_settings` ADD `base_report_template` blob;

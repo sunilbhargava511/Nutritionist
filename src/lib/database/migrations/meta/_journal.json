@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1754950827169,
+      "tag": "0000_hard_piledriver",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1754958427910,
+      "tag": "0001_clammy_hydra",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1754976895172,
+      "tag": "0002_amused_quicksilver",
+      "breakpoints": true
+    }
+  ]
+}
