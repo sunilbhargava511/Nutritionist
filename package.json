@@ -6,8 +6,10 @@
     "dev": "next dev --turbopack",
     "dev:https": "node server.js",
     "build": "next build",
-    "start": "next start -p ${PORT:-3000}",
+    "start": "node server.prod.js",
+    "start:next": "next start",
     "lint": "next lint",
+    "postinstall": "node -e \"console.log('Skipping DB migration in production')\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
