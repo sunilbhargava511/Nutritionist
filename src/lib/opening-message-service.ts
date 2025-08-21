@@ -69,8 +69,9 @@ export class OpeningMessageService {
     voiceSettings?: VoiceSettings, 
     generateAudio: boolean = true
   ): Promise<OpeningMessageWithAudio> {
-    // First, deactivate existing general opening messages
     const db = getDB();
+    
+    // First, deactivate existing general opening messages
     await db.update(schema.openingMessages)
       .set({ active: false })
       .where(eq(schema.openingMessages.type, 'general_opening'));
@@ -86,7 +87,6 @@ export class OpeningMessageService {
       active: true
     };
 
-    const db = getDB();
     await db.insert(schema.openingMessages).values(newMessage);
     
     // Generate audio if requested
@@ -122,8 +122,9 @@ export class OpeningMessageService {
     voiceSettings?: VoiceSettings,
     generateAudio: boolean = true
   ): Promise<OpeningMessageWithAudio> {
-    // First, deactivate existing lesson intro messages for this lesson
     const db = getDB();
+    
+    // First, deactivate existing lesson intro messages for this lesson
     await db.update(schema.openingMessages)
       .set({ active: false })
       .where(
@@ -145,7 +146,6 @@ export class OpeningMessageService {
       active: true
     };
 
-    const db = getDB();
     await db.insert(schema.openingMessages).values(newMessage);
     
     // Generate audio if requested
@@ -176,7 +176,8 @@ export class OpeningMessageService {
 
   // Get all lesson intro messages
   async getAllLessonIntroMessages(): Promise<schema.OpeningMessage[]> {
-    const db = getDB(); return await db.select()
+    const db = getDB();
+    return await db.select()
       .from(schema.openingMessages)
       .where(
         and(
