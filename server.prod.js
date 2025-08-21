@@ -1,10 +1,14 @@
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
+const { initializeDatabase } = require('./lib/db-init');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = '0.0.0.0'; // Listen on all interfaces for Railway
 const port = parseInt(process.env.PORT || '3000', 10);
+
+// Initialize database before starting the app
+initializeDatabase();
 
 // Create Next.js app
 const app = next({ dev, hostname, port });
