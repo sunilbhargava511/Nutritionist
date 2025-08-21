@@ -66,7 +66,7 @@ export class EnhancedClaudeService {
   // Load prompt from database by type
   private async getPrompt(type: 'content' | 'qa' | 'report'): Promise<string> {
     try {
-      const prompt = const db = getDB(); await db.select().from(schema.systemPrompts)
+      const prompt = await getDB().select().from(schema.systemPrompts)
         .where(and(
           eq(schema.systemPrompts.type, type),
           eq(schema.systemPrompts.active, true)

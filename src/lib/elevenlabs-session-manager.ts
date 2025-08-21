@@ -76,7 +76,7 @@ class DatabaseStorageAdapter {
       const serializedData = JSON.stringify(data);
       const now = new Date().toISOString();
       
-      const existing = const db = getDB(); await db.select()
+      const existing = await getDB().select()
         .from(elevenlabsSessions)
         .where(eq(elevenlabsSessions.id, key))
         .limit(1);
@@ -107,7 +107,7 @@ class DatabaseStorageAdapter {
 
   async load<T>(key: string): Promise<T | null> {
     try {
-      const result = const db = getDB(); await db.select()
+      const result = await getDB().select()
         .from(elevenlabsSessions)
         .where(eq(elevenlabsSessions.id, key))
         .limit(1);
@@ -135,7 +135,7 @@ class DatabaseStorageAdapter {
 
   async exists(key: string): Promise<boolean> {
     try {
-      const result = const db = getDB(); await db.select({ id: elevenlabsSessions.id })
+      const result = await getDB().select({ id: elevenlabsSessions.id })
         .from(elevenlabsSessions)
         .where(eq(elevenlabsSessions.id, key))
         .limit(1);

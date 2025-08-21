@@ -28,7 +28,7 @@ export interface OpeningMessageWithAudio extends schema.OpeningMessage {
 export class OpeningMessageService {
   // Get general opening message with audio cache
   async getGeneralOpeningMessage(): Promise<OpeningMessageWithAudio | null> {
-    const messages = const db = getDB(); await db.select()
+    const messages = await getDB().select()
       .from(schema.openingMessages)
       .where(
         and(
@@ -46,7 +46,7 @@ export class OpeningMessageService {
 
   // Get lesson intro message with audio cache
   async getLessonIntroMessage(lessonId: string): Promise<OpeningMessageWithAudio | null> {
-    const messages = const db = getDB(); await db.select()
+    const messages = await getDB().select()
       .from(schema.openingMessages)
       .where(
         and(
@@ -101,7 +101,7 @@ export class OpeningMessageService {
       }
     }
     
-    const created = const db = getDB(); await db.select()
+    const created = await getDB().select()
       .from(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId))
       .limit(1);
@@ -158,7 +158,7 @@ export class OpeningMessageService {
       }
     }
     
-    const created = const db = getDB(); await db.select()
+    const created = await getDB().select()
       .from(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId))
       .limit(1);
@@ -172,7 +172,7 @@ export class OpeningMessageService {
 
   // Get all lesson intro messages
   async getAllLessonIntroMessages(): Promise<schema.OpeningMessage[]> {
-    return const db = getDB(); await db.select()
+    const db = getDB(); return await db.select()
       .from(schema.openingMessages)
       .where(
         and(
@@ -268,7 +268,7 @@ export class OpeningMessageService {
 
   // Force regenerate audio for a message
   async regenerateAudio(messageId: string): Promise<void> {
-    const message = const db = getDB(); await db.select()
+    const message = await getDB().select()
       .from(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId))
       .limit(1);
@@ -315,7 +315,7 @@ export class OpeningMessageService {
 
   // Check if message needs audio regeneration
   async needsAudioRegeneration(messageId: string): Promise<boolean> {
-    const message = const db = getDB(); await db.select()
+    const message = await getDB().select()
       .from(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId))
       .limit(1);

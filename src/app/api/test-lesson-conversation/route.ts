@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const testSession = await lessonService.createUserSession('test_user');
 
     // Create lesson conversation record directly
-    const lessonConversation = const db = getDB(); await db.insert(schema.lessonConversations).values({
+    const lessonConversation = await getDB().insert(schema.lessonConversations).values({
       id: `test_conv_${Date.now()}`,
       sessionId: testSession.id,
       lessonId: lessonId,

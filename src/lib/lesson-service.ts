@@ -28,7 +28,7 @@ export class LessonService {
       orderIndex = existingLessons.length;
     }
     
-    const newLesson = const db = getDB(); await db.insert(schema.lessons).values({
+    const newLesson = await getDB().insert(schema.lessons).values({
       id: lessonId,
       title: lessonData.title,
       videoUrl: lessonData.videoUrl,
@@ -45,6 +45,7 @@ export class LessonService {
   }
 
   async getLesson(lessonId: string): Promise<Lesson | null> {
+    const db = getDB();
     const lessons = await db
       .select()
       .from(schema.lessons)
@@ -56,11 +57,12 @@ export class LessonService {
   }
 
   async getAllLessons(activeOnly: boolean = false): Promise<Lesson[]> {
+    const db = getDB();
     const lessons = activeOnly 
-      ? const db = getDB(); await db.select().from(schema.lessons)
+      ? await db.select().from(schema.lessons)
           .where(eq(schema.lessons.active, true))
           .orderBy(asc(schema.lessons.orderIndex))
-      : const db = getDB(); await db.select().from(schema.lessons)
+      : await db.select().from(schema.lessons)
           .orderBy(asc(schema.lessons.orderIndex));
     
     return lessons.map(this.convertDatabaseLesson);
@@ -114,7 +116,7 @@ export class LessonService {
   async createUserSession(userId?: string): Promise<UserSession> {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    const newSession = const db = getDB(); await db.insert(schema.userSessions).values({
+    const newSession = await getDB().insert(schema.userSessions).values({
       id: sessionId,
       userId,
       completedLessons: JSON.stringify([]),
@@ -181,7 +183,7 @@ export class LessonService {
   ): Promise<LessonConversation> {
     const convId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    const newConversation = const db = getDB(); await db.insert(schema.lessonConversations).values({
+    const newConversation = await getDB().insert(schema.lessonConversations).values({
       id: convId,
       sessionId,
       lessonId,

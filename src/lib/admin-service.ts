@@ -78,7 +78,7 @@ export class AdminService {
       .where(eq(schema.systemPrompts.type, type));
 
     // Insert new prompt
-    const newPrompt = const db = getDB(); await db.insert(schema.systemPrompts).values({
+    const newPrompt = await getDB().insert(schema.systemPrompts).values({
       id: promptId,
       type,
       content,
@@ -115,7 +115,7 @@ export class AdminService {
     const content = await file.text();
     const fileId = `kb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    const newFile = const db = getDB(); await db.insert(schema.knowledgeBaseFiles).values({
+    const newFile = await getDB().insert(schema.knowledgeBaseFiles).values({
       id: fileId,
       filename: file.name,
       content,

@@ -36,7 +36,7 @@ export class EducationalSessionService {
     const finalPersonalizationEnabled = personalizationEnabled !== undefined ? personalizationEnabled : defaults.personalizationEnabled;
     const finalConversationAware = conversationAware !== undefined ? conversationAware : defaults.conversationAware;
     
-    const newSession = const db = getDB(); await db.insert(schema.conversations).values({
+    const newSession = await getDB().insert(schema.conversations).values({
       id: sessionId,
       conversationId: conversationId || sessionId, // Store ElevenLabs conversation_id
       conversationType,

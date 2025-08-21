@@ -37,7 +37,7 @@ export class AudioCacheService {
    * Check if audio needs regeneration based on content/settings changes
    */
   async needsRegeneration(messageId: string, content: string, voiceSettings: any): Promise<boolean> {
-    const message = const db = getDB(); await db.select()
+    const message = await getDB().select()
       .from(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId))
       .limit(1);
@@ -164,7 +164,7 @@ export class AudioCacheService {
    * Get cached audio for a message
    */
   async getCachedAudio(messageId: string): Promise<CachedAudio | null> {
-    const message = const db = getDB(); await db.select()
+    const message = await getDB().select()
       .from(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId))
       .limit(1);
@@ -240,7 +240,7 @@ export class AudioCacheService {
     succeeded: number;
     failed: number;
   }> {
-    const messages = const db = getDB(); await db.select().from(schema.openingMessages);
+    const messages = await getDB().select().from(schema.openingMessages);
     
     let succeeded = 0;
     let failed = 0;
@@ -278,7 +278,7 @@ export class AudioCacheService {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysOld);
     
-    const oldEntries = const db = getDB(); await db.select()
+    const oldEntries = await getDB().select()
       .from(schema.audioCache)
       .where(sql`${schema.audioCache.accessedAt} < ${cutoffDate.toISOString()}`);
     
@@ -306,10 +306,10 @@ export class AudioCacheService {
     totalCacheSize: number;
     averageDuration: number;
   }> {
-    const messages = const db = getDB(); await db.select().from(schema.openingMessages);
+    const messages = await getDB().select().from(schema.openingMessages);
     const cached = messages.filter(m => m.audioBlob);
     
-    const cacheEntries = const db = getDB(); await db.select().from(schema.audioCache);
+    const cacheEntries = await getDB().select().from(schema.audioCache);
     const totalSize = cacheEntries.reduce((sum, entry) => sum + (entry.sizeBytes || 0), 0);
     const totalDuration = cached.reduce((sum, msg) => sum + (msg.audioDuration || 0), 0);
     

@@ -33,7 +33,7 @@ export class KnowledgeSearchService {
     }
 
     try {
-      const knowledgeFiles = const db = getDB(); await db.select().from(schema.knowledgeBaseFiles);
+      const knowledgeFiles = await getDB().select().from(schema.knowledgeBaseFiles);
       
       const articles: Article[] = knowledgeFiles.map(file => {
         // Parse the markdown content to extract metadata

@@ -46,7 +46,7 @@ export class SessionTranscriptService {
 
     const db = getDB(); await db.insert(schema.conversationSessions).values(newSession);
     
-    const created = const db = getDB(); await db.select()
+    const created = await getDB().select()
       .from(schema.conversationSessions)
       .where(eq(schema.conversationSessions.id, sessionId))
       .limit(1);
@@ -60,7 +60,7 @@ export class SessionTranscriptService {
 
   // Get session by ID
   async getSession(sessionId: string): Promise<schema.ConversationSession | null> {
-    const sessions = const db = getDB(); await db.select()
+    const sessions = await getDB().select()
       .from(schema.conversationSessions)
       .where(eq(schema.conversationSessions.id, sessionId))
       .limit(1);
@@ -70,7 +70,7 @@ export class SessionTranscriptService {
 
   // Get session by ElevenLabs conversation ID
   async getSessionByElevenLabsId(conversationId: string): Promise<schema.ConversationSession | null> {
-    const sessions = const db = getDB(); await db.select()
+    const sessions = await getDB().select()
       .from(schema.conversationSessions)
       .where(eq(schema.conversationSessions.elevenlabsConversationId, conversationId))
       .limit(1);
@@ -138,7 +138,7 @@ export class SessionTranscriptService {
 
     const db = getDB(); await db.insert(schema.conversationMessages).values(newMessage);
     
-    const created = const db = getDB(); await db.select()
+    const created = await getDB().select()
       .from(schema.conversationMessages)
       .where(eq(schema.conversationMessages.id, messageId))
       .limit(1);
@@ -163,7 +163,7 @@ export class SessionTranscriptService {
 
   // Get complete session transcript
   async getCompleteTranscript(sessionId: string): Promise<SessionTranscriptMessage[]> {
-    const messages = const db = getDB(); await db.select()
+    const messages = await getDB().select()
       .from(schema.conversationMessages)
       .where(eq(schema.conversationMessages.sessionId, sessionId))
       .orderBy(schema.conversationMessages.timestamp);
@@ -276,7 +276,7 @@ export class SessionTranscriptService {
 
   // Get recent sessions
   async getRecentSessions(limit: number = 10): Promise<schema.ConversationSession[]> {
-    return const db = getDB(); await db.select()
+    const db = getDB(); return await db.select()
       .from(schema.conversationSessions)
       .orderBy(desc(schema.conversationSessions.updatedAt))
       .limit(limit);
@@ -284,7 +284,7 @@ export class SessionTranscriptService {
 
   // Get active sessions
   async getActiveSessions(): Promise<schema.ConversationSession[]> {
-    return const db = getDB(); await db.select()
+    const db = getDB(); return await db.select()
       .from(schema.conversationSessions)
       .where(eq(schema.conversationSessions.status, 'active'))
       .orderBy(desc(schema.conversationSessions.updatedAt));

@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create lesson-specific system prompt
-    const systemPrompt = const db = getDB(); await db.insert(schema.systemPrompts).values({
+    const systemPrompt = await getDB().insert(schema.systemPrompts).values({
       id: `prompt_${Date.now()}`,
       type: 'lesson_qa',
       lessonId: lessonId,

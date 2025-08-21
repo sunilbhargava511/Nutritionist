@@ -390,7 +390,7 @@ export class DebugDatabaseService {
         .where(sql`${schema.debugEntries.timestamp} < ${cutoffTimestamp}`);
 
       // Delete empty sessions (simplified approach)
-      const allSessions = const db = getDB(); await db.select({ id: schema.debugSessions.id }).from(schema.debugSessions);
+      const allSessions = await getDB().select({ id: schema.debugSessions.id }).from(schema.debugSessions);
       
       for (const session of allSessions) {
         const entryCount = await db
