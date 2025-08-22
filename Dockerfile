@@ -54,11 +54,15 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy the seeded database to temp location
-COPY --from=builder /app/database.sqlite /tmp/database.sqlite
+# Copy the seeded database if it exists (use wildcard to avoid failure if missing)
+COPY database.sqlite* /tmp/
 
-# Create data directory for SQLite volume
-RUN mkdir -p /data && chown -R nextjs:nodejs /data
+# Create data directory for SQLite volume and set permissions
+RUN mkdir -p /data && \
+    chown -R nextjs:nodejs /data && \
+    if [ -f /tmp/database.sqlite ]; then \
+      chown nextjs:nodejs /tmp/database.sqlite* ; \
+    fi
 
 # Create initialization script (database will be created on first run)
 RUN echo '#!/bin/sh\n\
