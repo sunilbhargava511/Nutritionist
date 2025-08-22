@@ -54,12 +54,15 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy the seeded database if it exists (use wildcard to avoid failure if missing)
+# Copy startup script and database
+COPY start.sh ./start.sh
 COPY database.sqlite* /tmp/
 
 # Create data directory for SQLite volume and set permissions
 RUN mkdir -p /data && \
+    chmod +x start.sh && \
     chown -R nextjs:nodejs /data && \
+    chown nextjs:nodejs start.sh && \
     if [ -f /tmp/database.sqlite ]; then \
       chown nextjs:nodejs /tmp/database.sqlite* ; \
     fi
@@ -82,19 +85,12 @@ EXPOSE 3000
 # Set port for Railway (Railway will override this with dynamic port)
 ENV PORT 3000
 
+# Set database path explicitly
+ENV DATABASE_PATH /data/database.sqlite
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/api/health', (r) => {r.statusCode === 200 ? process.exit(0) : process.exit(1)})"
 
-# Start command with database initialization
-CMD if [ ! -f /data/database.sqlite ]; then \
-      echo "Initializing database..." && \
-      if [ -f /tmp/database.sqlite ]; then \
-        cp /tmp/database.sqlite /data/database.sqlite && \
-        echo "Database copied from seed"; \
-      else \
-        echo "No seed database found, will create new"; \
-      fi; \
-    fi && \
-    echo "Starting server on port ${PORT:-3000}" && \
-    node server.js
+# Start command using the startup script
+CMD ["./start.sh"]
