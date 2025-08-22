@@ -82,7 +82,7 @@ export class LessonService {
       dbUpdates.updatedAt = dbUpdates.updatedAt.toISOString();
     }
     
-    await db
+    await getDB()
       .update(schema.lessons)
       .set({
         ...dbUpdates,
@@ -92,7 +92,7 @@ export class LessonService {
   }
 
   async deleteLesson(lessonId: string): Promise<void> {
-    await db
+    await getDB()
       .delete(schema.lessons)
       .where(eq(schema.lessons.id, lessonId));
   }
@@ -100,7 +100,7 @@ export class LessonService {
   async reorderLessons(lessonIds: string[]): Promise<void> {
     // Update order index for each lesson
     for (let i = 0; i < lessonIds.length; i++) {
-      await db
+      await getDB()
         .update(schema.lessons)
         .set({ 
           orderIndex: i,
@@ -127,7 +127,7 @@ export class LessonService {
   }
 
   async getUserSession(sessionId: string): Promise<UserSession | null> {
-    const sessions = await db
+    const sessions = await getDB()
       .select()
       .from(schema.userSessions)
       .where(eq(schema.userSessions.id, sessionId))
@@ -153,7 +153,7 @@ export class LessonService {
       dbUpdates.updatedAt = dbUpdates.updatedAt.toISOString();
     }
     
-    await db
+    await getDB()
       .update(schema.userSessions)
       .set({
         ...dbUpdates,
@@ -196,7 +196,7 @@ export class LessonService {
   }
 
   async getLessonConversation(conversationId: string): Promise<LessonConversation | null> {
-    const conversations = await db
+    const conversations = await getDB()
       .select()
       .from(schema.lessonConversations)
       .where(eq(schema.lessonConversations.id, conversationId))
@@ -220,7 +220,7 @@ export class LessonService {
       dbUpdates.updatedAt = dbUpdates.updatedAt.toISOString();
     }
     
-    await db
+    await getDB()
       .update(schema.lessonConversations)
       .set({
         ...dbUpdates,
