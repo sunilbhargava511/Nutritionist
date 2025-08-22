@@ -8,7 +8,7 @@ const getDbPath = () => {
   return process.env.DATABASE_URL?.startsWith('file:') 
     ? process.env.DATABASE_URL.replace('file:', '')
     : process.env.NODE_ENV === 'production' 
-      ? (process.env.DATABASE_PATH || '/tmp/database.sqlite')
+      ? (process.env.DATABASE_PATH || '/data/database.sqlite')
       : path.join(process.cwd(), 'database.sqlite');
 };
 
