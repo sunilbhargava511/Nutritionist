@@ -149,10 +149,10 @@ export async function initializeDatabase() {
     const { db } = initDB();
     
     // Check if we need to seed default admin settings
-    const existingSettings = await db.select().from(schema.adminSettings).limit(1);
+    const existingSettings = await getDB().select().from(schema.adminSettings).limit(1);
     
     if (existingSettings.length === 0) {
-      await db.insert(schema.adminSettings).values({
+      await getDB().insert(schema.adminSettings).values({
         id: 'default',
         voiceId: 'pNInz6obpgDQGcFmaJgB', // Adam voice from ElevenLabs
         voiceDescription: 'Professional, clear voice for financial education',
@@ -165,10 +165,10 @@ export async function initializeDatabase() {
     }
 
     // Check if we need to seed default system prompts
-    const existingPrompts = await db.select().from(schema.systemPrompts).limit(1);
+    const existingPrompts = await getDB().select().from(schema.systemPrompts).limit(1);
     
     if (existingPrompts.length === 0) {
-      await db.insert(schema.systemPrompts).values([
+      await getDB().insert(schema.systemPrompts).values([
         {
           id: 'qa_prompt', 
           type: 'qa',

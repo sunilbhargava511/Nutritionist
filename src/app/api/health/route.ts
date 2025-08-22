@@ -14,9 +14,8 @@ export async function GET(request: NextRequest) {
 
     // Quick database connectivity check (non-blocking)
     try {
-      const db = getDB();
       // Simple table existence check instead of data query
-      await db.select().from(schema.adminSettings).limit(1);
+      await getDB().select().from(schema.adminSettings).limit(1);
       health['database'] = 'connected';
     } catch (dbError) {
       // Don't fail health check if database is still initializing
