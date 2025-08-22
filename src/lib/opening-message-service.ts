@@ -72,7 +72,7 @@ export class OpeningMessageService {
     const db = getDB();
     
     // First, deactivate existing general opening messages
-    await db.update(schema.openingMessages)
+    await getDB().update(schema.openingMessages)
       .set({ active: false })
       .where(eq(schema.openingMessages.type, 'general_opening'));
 
@@ -87,7 +87,7 @@ export class OpeningMessageService {
       active: true
     };
 
-    await db.insert(schema.openingMessages).values(newMessage);
+    await getDB().insert(schema.openingMessages).values(newMessage);
     
     // Generate audio if requested
     if (generateAudio) {
@@ -125,7 +125,7 @@ export class OpeningMessageService {
     const db = getDB();
     
     // First, deactivate existing lesson intro messages for this lesson
-    await db.update(schema.openingMessages)
+    await getDB().update(schema.openingMessages)
       .set({ active: false })
       .where(
         and(
@@ -146,7 +146,7 @@ export class OpeningMessageService {
       active: true
     };
 
-    await db.insert(schema.openingMessages).values(newMessage);
+    await getDB().insert(schema.openingMessages).values(newMessage);
     
     // Generate audio if requested
     if (generateAudio) {
@@ -177,7 +177,7 @@ export class OpeningMessageService {
   // Get all lesson intro messages
   async getAllLessonIntroMessages(): Promise<schema.OpeningMessage[]> {
     const db = getDB();
-    return await db.select()
+    return await getDB().select()
       .from(schema.openingMessages)
       .where(
         and(
@@ -190,7 +190,7 @@ export class OpeningMessageService {
   // Delete opening message
   async deleteOpeningMessage(messageId: string): Promise<void> {
     const db = getDB();
-    await db.delete(schema.openingMessages)
+    await getDB().delete(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId));
   }
 
@@ -236,7 +236,7 @@ export class OpeningMessageService {
   // Update opening message content only
   async updateMessageContent(messageId: string, messageContent: string): Promise<void> {
     const db = getDB();
-    await db.update(schema.openingMessages)
+    await getDB().update(schema.openingMessages)
       .set({ 
         messageContent,
         updatedAt: new Date().toISOString()
@@ -247,7 +247,7 @@ export class OpeningMessageService {
   // Update voice settings only
   async updateVoiceSettings(messageId: string, voiceSettings: VoiceSettings): Promise<void> {
     const db = getDB();
-    await db.update(schema.openingMessages)
+    await getDB().update(schema.openingMessages)
       .set({ 
         voiceSettings: JSON.stringify(voiceSettings),
         updatedAt: new Date().toISOString()

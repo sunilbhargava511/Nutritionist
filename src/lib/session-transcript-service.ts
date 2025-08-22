@@ -44,8 +44,7 @@ export class SessionTranscriptService {
       status: 'active'
     };
 
-    const db = getDB();
-    await db.insert(schema.conversationSessions).values(newSession);
+    await getDB().insert(schema.conversationSessions).values(newSession);
     
     const created = await getDB().select()
       .from(schema.conversationSessions)
@@ -82,7 +81,7 @@ export class SessionTranscriptService {
   // Update session
   async updateSession(sessionId: string, updates: Partial<schema.ConversationSession>): Promise<void> {
     const db = getDB();
-    await db.update(schema.conversationSessions)
+    await getDB().update(schema.conversationSessions)
       .set({
         ...updates,
         updatedAt: new Date().toISOString()
@@ -139,7 +138,7 @@ export class SessionTranscriptService {
     };
 
     const db = getDB();
-    await db.insert(schema.conversationMessages).values(newMessage);
+    await getDB().insert(schema.conversationMessages).values(newMessage);
     
     const created = await getDB().select()
       .from(schema.conversationMessages)
@@ -280,7 +279,7 @@ export class SessionTranscriptService {
   // Get recent sessions
   async getRecentSessions(limit: number = 10): Promise<schema.ConversationSession[]> {
     const db = getDB();
-    return await db.select()
+    return await getDB().select()
       .from(schema.conversationSessions)
       .orderBy(desc(schema.conversationSessions.updatedAt))
       .limit(limit);
@@ -289,7 +288,7 @@ export class SessionTranscriptService {
   // Get active sessions
   async getActiveSessions(): Promise<schema.ConversationSession[]> {
     const db = getDB();
-    return await db.select()
+    return await getDB().select()
       .from(schema.conversationSessions)
       .where(eq(schema.conversationSessions.status, 'active'))
       .orderBy(desc(schema.conversationSessions.updatedAt));

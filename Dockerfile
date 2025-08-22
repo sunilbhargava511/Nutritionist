@@ -54,9 +54,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy startup script, test server, and database
+# Copy startup script and database
 COPY start.sh ./start.sh
-COPY test-server.js ./test-server.js
 COPY database.sqlite* /tmp/
 
 # Create data directory for SQLite database (Railway fix)
@@ -89,9 +88,7 @@ EXPOSE 8080
 # Set database path explicitly
 ENV DATABASE_PATH /data/database.sqlite
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/api/health', (r) => {r.statusCode === 200 ? process.exit(0) : process.exit(1)})"
+# Railway handles health checks automatically, no Docker HEALTHCHECK needed
 
 # Start command using the startup script
 CMD ["./start.sh"]

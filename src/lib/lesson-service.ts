@@ -59,10 +59,10 @@ export class LessonService {
   async getAllLessons(activeOnly: boolean = false): Promise<Lesson[]> {
     const db = getDB();
     const lessons = activeOnly 
-      ? await db.select().from(schema.lessons)
+      ? await getDB().select().from(schema.lessons)
           .where(eq(schema.lessons.active, true))
           .orderBy(asc(schema.lessons.orderIndex))
-      : await db.select().from(schema.lessons)
+      : await getDB().select().from(schema.lessons)
           .orderBy(asc(schema.lessons.orderIndex));
     
     return lessons.map(this.convertDatabaseLesson);

@@ -127,7 +127,7 @@ export class DebugDatabaseService {
       const sessionId = `debug_session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       const db = getDB();
-      await db.insert(schema.debugSessions).values({
+      await getDB().insert(schema.debugSessions).values({
         id: sessionId,
         title: `Debug Session ${new Date().toLocaleString()}`,
         isActive: true
@@ -158,7 +158,7 @@ export class DebugDatabaseService {
       const entryId = `debug_entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       const db = getDB();
-      await db.insert(schema.debugEntries).values({
+      await getDB().insert(schema.debugEntries).values({
         id: entryId,
         sessionId,
         type,
@@ -328,8 +328,8 @@ export class DebugDatabaseService {
     try {
       const db = getDB();
       const [sessionCount, entryCount] = await Promise.all([
-        db.select({ count: sql`count(*)` }).from(schema.debugSessions),
-        db.select({ count: sql`count(*)` }).from(schema.debugEntries)
+        getDB().select({ count: sql`count(*)` }).from(schema.debugSessions),
+        getDB().select({ count: sql`count(*)` }).from(schema.debugEntries)
       ]);
 
       let currentSessionEntries = 0;
@@ -364,8 +364,8 @@ export class DebugDatabaseService {
   async clearDebugData(): Promise<void> {
     try {
       const db = getDB();
-      await db.delete(schema.debugEntries);
-      await db.delete(schema.debugSessions);
+      await getDB().delete(schema.debugEntries);
+      await getDB().delete(schema.debugSessions);
       this.currentSessionId = null;
       console.log('[Debug DB] Cleared all debug data');
     } catch (error) {
@@ -404,7 +404,7 @@ export class DebugDatabaseService {
           .where(eq(schema.debugEntries.sessionId, session.id));
         
         if (Number(entryCount[0]?.count || 0) === 0) {
-          await db.delete(schema.debugSessions).where(eq(schema.debugSessions.id, session.id));
+          await getDB().delete(schema.debugSessions).where(eq(schema.debugSessions.id, session.id));
         }
       }
 
@@ -469,7 +469,7 @@ export class DebugDatabaseService {
       const debugSessionId = await this.getCurrentSession();
       
       const db = getDB();
-      await db.insert(schema.sessionEvents).values({
+      await getDB().insert(schema.sessionEvents).values({
         id: event.id,
         sessionId: event.metadata.sessionId,
         debugSessionId,

@@ -42,7 +42,10 @@ export HOSTNAME=0.0.0.0
 
 # Start the server
 echo "Starting Next.js server on 0.0.0.0:${PORT:-3000}..."
-# Temporarily use test server to verify Railway connectivity
-echo "TESTING: Using test-server.js instead of server.js"
-exec node test-server.js
-# exec node server.js
+echo "Using Next.js standalone server"
+echo "Railway Variables:"
+echo "  PORT: ${PORT}"
+echo "  HOSTNAME: ${HOSTNAME}" 
+echo "  NODE_ENV: ${NODE_ENV}"
+echo "  PWD: $(pwd)"
+exec node server.js

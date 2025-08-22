@@ -131,8 +131,7 @@ export class AudioCacheService {
     const now = new Date().toISOString();
     
     // Update opening message with cached audio
-    const db = getDB();
-    await db.update(schema.openingMessages)
+    await getDB().update(schema.openingMessages)
       .set({
         audioBlob: audioData,
         audioHash: audioHash,
@@ -144,7 +143,7 @@ export class AudioCacheService {
     
     // Also store in audio_cache table for redundancy
     const cacheId = `cache_${messageId}_${Date.now()}`;
-    await db.insert(schema.audioCache).values({
+    await getDB().insert(schema.audioCache).values({
       id: cacheId,
       messageId: messageId,
       audioData: audioData,
@@ -185,8 +184,7 @@ export class AudioCacheService {
     
     // Update access count if audio exists
     if (msg.audioBlob) {
-      const db = getDB();
-      await db.update(schema.audioCache)
+      await getDB().update(schema.audioCache)
         .set({
           accessedAt: new Date().toISOString(),
           accessCount: sql`${schema.audioCache.accessCount} + 1`
@@ -285,8 +283,7 @@ export class AudioCacheService {
       .where(sql`${schema.audioCache.accessedAt} < ${cutoffDate.toISOString()}`);
     
     if (oldEntries.length > 0) {
-      const db = getDB();
-      await db.delete(schema.audioCache)
+      await getDB().delete(schema.audioCache)
         .where(sql`${schema.audioCache.accessedAt} < ${cutoffDate.toISOString()}`);
     }
     
