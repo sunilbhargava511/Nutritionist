@@ -55,7 +55,8 @@
       "Bash(DATABASE_PATH=\"./test-database.sqlite\" ELEVENLABS_API_KEY=test_key ELEVENLABS_AGENT_ID=test_agent HOSTNAME=0.0.0.0 PORT=3003 node server.js)",
       "Bash(NODE_ENV=production DATABASE_PATH=\"./test-database.sqlite\" HOSTNAME=0.0.0.0 PORT=3004 node server-production.js)",
       "Bash(NODE_ENV=production DATABASE_PATH=\"./test-database.sqlite\" HOSTNAME=0.0.0.0 PORT=3004 node .next/standalone/server.js)",
-      "Bash(NODE_ENV=production DATABASE_PATH=\"./test-database.sqlite\" HOSTNAME=0.0.0.0 PORT=3005 node .next/standalone/server.js)"
+      "Bash(NODE_ENV=production DATABASE_PATH=\"./test-database.sqlite\" HOSTNAME=0.0.0.0 PORT=3005 node .next/standalone/server.js)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "additionalDirectories": [

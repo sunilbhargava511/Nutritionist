@@ -27,11 +27,11 @@ export class ReportGenerator {
   // Method to get base template from database
   private async getBaseTemplate(): Promise<Uint8Array | null> {
     try {
-      const { db } = await import('./database');
+      const { getDB } = await import('./database');
       const { adminSettings } = await import('./database/schema');
       const { eq } = await import('drizzle-orm');
 
-      const settings = await db
+      const settings = await getDB()
         .select()
         .from(adminSettings)
         .where(eq(adminSettings.id, 'default'))
