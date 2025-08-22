@@ -77,8 +77,8 @@ if [ ! -f /data/database.sqlite ]; then\n\
 fi\n\
 exec "$@"' > /app/init-db.sh && chmod +x /app/init-db.sh
 
-# Switch to non-root user
-USER nextjs
+# Run as root for debugging (temporary)
+# USER nextjs
 
 # Expose port (Railway typically uses 8080)
 EXPOSE 8080
