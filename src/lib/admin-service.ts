@@ -12,8 +12,7 @@ export class AdminService {
 
   // Admin Settings Management
   async getAdminSettings(): Promise<AdminSettings | null> {
-    const db = getDB();
-    const settings = await db
+    const settings = await getDB()
       .select()
       .from(schema.adminSettings)
       .limit(1);
@@ -27,8 +26,7 @@ export class AdminService {
     
     if (!existingSettings) {
       // Create new settings if none exist
-      const db = getDB();
-      await db.insert(schema.adminSettings).values({
+      await getDB().insert(schema.adminSettings).values({
         id: 'default',
         voiceId: updates.voiceId || 'pNInz6obpgDQGcFmaJgB',
         voiceDescription: updates.voiceDescription || 'Professional voice',
@@ -47,8 +45,7 @@ export class AdminService {
         return acc;
       }, {} as any);
       
-      const db = getDB();
-      await db
+      await getDB()
         .update(schema.adminSettings)
         .set({
           ...filteredUpdates,
@@ -60,8 +57,7 @@ export class AdminService {
 
   // System Prompt Management
   async getAllSystemPrompts(): Promise<SystemPrompt[]> {
-    const db = getDB();
-    const prompts = await db
+    const prompts = await getDB()
       .select()
       .from(schema.systemPrompts);
 
@@ -76,8 +72,7 @@ export class AdminService {
     const promptId = `${type}_prompt_${Date.now()}`;
     
     // Deactivate existing prompts of this type
-    const db = getDB();
-    await db
+    await getDB()
       .update(schema.systemPrompts)
       .set({ active: false })
       .where(eq(schema.systemPrompts.type, type));
@@ -97,8 +92,7 @@ export class AdminService {
   }
 
   async updateSystemPrompt(promptId: string, content: string): Promise<void> {
-    const db = getDB();
-    await db
+    await getDB()
       .update(schema.systemPrompts)
       .set({
         content,
@@ -108,8 +102,7 @@ export class AdminService {
   }
 
   async deleteSystemPrompt(promptId: string): Promise<void> {
-    const db = getDB();
-    await db
+    await getDB()
       .delete(schema.systemPrompts)
       .where(eq(schema.systemPrompts.id, promptId));
   }
@@ -135,8 +128,7 @@ export class AdminService {
   }
 
   async getAllKnowledgeBaseFiles(): Promise<KnowledgeBaseFile[]> {
-    const db = getDB();
-    const files = await db
+    const files = await getDB()
       .select()
       .from(schema.knowledgeBaseFiles);
 
@@ -144,8 +136,7 @@ export class AdminService {
   }
 
   async deleteKnowledgeBaseFile(fileId: string): Promise<void> {
-    const db = getDB();
-    await db
+    await getDB()
       .delete(schema.knowledgeBaseFiles)
       .where(eq(schema.knowledgeBaseFiles.id, fileId));
   }
@@ -173,8 +164,7 @@ export class AdminService {
   }
 
   async removeBaseReportTemplate(): Promise<void> {
-    const db = getDB();
-    await db
+    await getDB()
       .update(schema.adminSettings)
       .set({
         baseReportPath: null,
@@ -228,8 +218,7 @@ export class AdminService {
 
   // Report Management
   async getAllReports(): Promise<SessionReport[]> {
-    const db = getDB();
-    const reports = await db
+    const reports = await getDB()
       .select()
       .from(schema.sessionReports)
       .orderBy(desc(schema.sessionReports.generatedAt));
@@ -238,8 +227,7 @@ export class AdminService {
   }
 
   async getReportsBySession(sessionId: string): Promise<SessionReport[]> {
-    const db = getDB();
-    const reports = await db
+    const reports = await getDB()
       .select()
       .from(schema.sessionReports)
       .where(eq(schema.sessionReports.sessionId, sessionId))
@@ -249,8 +237,7 @@ export class AdminService {
   }
 
   async getReportById(reportId: string): Promise<SessionReport | null> {
-    const db = getDB();
-    const reports = await db
+    const reports = await getDB()
       .select()
       .from(schema.sessionReports)
       .where(eq(schema.sessionReports.id, reportId))
@@ -261,15 +248,13 @@ export class AdminService {
   }
 
   async deleteReport(reportId: string): Promise<void> {
-    const db = getDB();
-    await db
+    await getDB()
       .delete(schema.sessionReports)
       .where(eq(schema.sessionReports.id, reportId));
   }
 
   async deleteReportsBySession(sessionId: string): Promise<void> {
-    const db = getDB();
-    await db
+    await getDB()
       .delete(schema.sessionReports)
       .where(eq(schema.sessionReports.sessionId, sessionId));
   }

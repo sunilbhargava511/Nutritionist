@@ -45,8 +45,7 @@ export class LessonService {
   }
 
   async getLesson(lessonId: string): Promise<Lesson | null> {
-    const db = getDB();
-    const lessons = await db
+    const lessons = await getDB()
       .select()
       .from(schema.lessons)
       .where(eq(schema.lessons.id, lessonId))
@@ -57,7 +56,6 @@ export class LessonService {
   }
 
   async getAllLessons(activeOnly: boolean = false): Promise<Lesson[]> {
-    const db = getDB();
     const lessons = activeOnly 
       ? await getDB().select().from(schema.lessons)
           .where(eq(schema.lessons.active, true))

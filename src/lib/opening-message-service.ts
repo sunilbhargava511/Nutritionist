@@ -69,8 +69,6 @@ export class OpeningMessageService {
     voiceSettings?: VoiceSettings, 
     generateAudio: boolean = true
   ): Promise<OpeningMessageWithAudio> {
-    const db = getDB();
-    
     // First, deactivate existing general opening messages
     await getDB().update(schema.openingMessages)
       .set({ active: false })
@@ -122,8 +120,6 @@ export class OpeningMessageService {
     voiceSettings?: VoiceSettings,
     generateAudio: boolean = true
   ): Promise<OpeningMessageWithAudio> {
-    const db = getDB();
-    
     // First, deactivate existing lesson intro messages for this lesson
     await getDB().update(schema.openingMessages)
       .set({ active: false })
@@ -176,7 +172,6 @@ export class OpeningMessageService {
 
   // Get all lesson intro messages
   async getAllLessonIntroMessages(): Promise<schema.OpeningMessage[]> {
-    const db = getDB();
     return await getDB().select()
       .from(schema.openingMessages)
       .where(
@@ -189,7 +184,6 @@ export class OpeningMessageService {
 
   // Delete opening message
   async deleteOpeningMessage(messageId: string): Promise<void> {
-    const db = getDB();
     await getDB().delete(schema.openingMessages)
       .where(eq(schema.openingMessages.id, messageId));
   }
@@ -235,7 +229,6 @@ export class OpeningMessageService {
 
   // Update opening message content only
   async updateMessageContent(messageId: string, messageContent: string): Promise<void> {
-    const db = getDB();
     await getDB().update(schema.openingMessages)
       .set({ 
         messageContent,
@@ -246,7 +239,6 @@ export class OpeningMessageService {
 
   // Update voice settings only
   async updateVoiceSettings(messageId: string, voiceSettings: VoiceSettings): Promise<void> {
-    const db = getDB();
     await getDB().update(schema.openingMessages)
       .set({ 
         voiceSettings: JSON.stringify(voiceSettings),
