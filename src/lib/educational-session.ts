@@ -51,7 +51,7 @@ export class EducationalSessionService {
   }
 
   async getSession(sessionId: string): Promise<EducationalSession | null> {
-    const sessions = await db
+    const sessions = await getDB()
       .select()
       .from(schema.conversations)
       .where(eq(schema.conversations.id, sessionId))
@@ -71,7 +71,7 @@ export class EducationalSessionService {
       dbUpdates.updatedAt = dbUpdates.updatedAt.toISOString();
     }
     
-    await db
+    await getDB()
       .update(schema.conversations)
       .set({
         ...dbUpdates,
@@ -129,7 +129,7 @@ export class EducationalSessionService {
   }
 
   async getSessionResponses(sessionId: string): Promise<any[]> {
-    const responses = await db
+    const responses = await getDB()
       .select()
       .from(schema.sessionProgress)
       .where(eq(schema.sessionProgress.sessionId, sessionId));
@@ -139,7 +139,7 @@ export class EducationalSessionService {
 
   // System Configuration
   async getAdminSettings(): Promise<AdminSettings | null> {
-    const settings = await db
+    const settings = await getDB()
       .select()
       .from(schema.adminSettings)
       .limit(1);
@@ -149,7 +149,7 @@ export class EducationalSessionService {
   }
 
   async getSystemPrompt(type: 'content' | 'qa' | 'report'): Promise<SystemPrompt | null> {
-    const prompts = await db
+    const prompts = await getDB()
       .select()
       .from(schema.systemPrompts)
       .where(and(
