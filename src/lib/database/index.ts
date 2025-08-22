@@ -133,6 +133,55 @@ function createTables(sqlite: Database.Database) {
       )
     `);
     
+    // Create knowledge_base_files table
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS knowledge_base_files (
+        id text PRIMARY KEY NOT NULL,
+        filename text NOT NULL,
+        content text NOT NULL,
+        file_type text NOT NULL,
+        indexed_content text,
+        uploaded_at text DEFAULT (CURRENT_TIMESTAMP)
+      )
+    `);
+    
+    // Create session_reports table
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS session_reports (
+        id text PRIMARY KEY NOT NULL,
+        session_id text NOT NULL,
+        report_path text NOT NULL,
+        report_data blob,
+        generated_at text DEFAULT (CURRENT_TIMESTAMP)
+      )
+    `);
+    
+    // Create user_sessions table
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS user_sessions (
+        id text PRIMARY KEY NOT NULL,
+        user_id text,
+        completed_lessons text,
+        current_lesson_id text,
+        created_at text DEFAULT (CURRENT_TIMESTAMP),
+        updated_at text DEFAULT (CURRENT_TIMESTAMP)
+      )
+    `);
+    
+    // Create lesson_conversations table
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS lesson_conversations (
+        id text PRIMARY KEY NOT NULL,
+        session_id text NOT NULL,
+        lesson_id text NOT NULL,
+        conversation_id text,
+        completed integer DEFAULT false,
+        messages_count integer DEFAULT 0,
+        created_at text DEFAULT (CURRENT_TIMESTAMP),
+        updated_at text DEFAULT (CURRENT_TIMESTAMP)
+      )
+    `);
+    
     console.log('[DB] Tables created successfully');
   } catch (error) {
     console.error('[DB] Error creating tables:', error);
