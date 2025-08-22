@@ -28,6 +28,7 @@ export class AdminService {
     if (!existingSettings) {
       // Create new settings if none exist
       const db = getDB();
+      const db = getDB();
       await db.insert(schema.adminSettings).values({
         id: 'default',
         voiceId: updates.voiceId || 'pNInz6obpgDQGcFmaJgB',
@@ -59,6 +60,7 @@ export class AdminService {
 
   // System Prompt Management
   async getAllSystemPrompts(): Promise<SystemPrompt[]> {
+    const db = getDB();
     const prompts = await db
       .select()
       .from(schema.systemPrompts);
@@ -130,6 +132,7 @@ export class AdminService {
   }
 
   async getAllKnowledgeBaseFiles(): Promise<KnowledgeBaseFile[]> {
+    const db = getDB();
     const files = await db
       .select()
       .from(schema.knowledgeBaseFiles);
@@ -138,6 +141,7 @@ export class AdminService {
   }
 
   async deleteKnowledgeBaseFile(fileId: string): Promise<void> {
+    const db = getDB();
     await db
       .delete(schema.knowledgeBaseFiles)
       .where(eq(schema.knowledgeBaseFiles.id, fileId));
@@ -220,6 +224,7 @@ export class AdminService {
 
   // Report Management
   async getAllReports(): Promise<SessionReport[]> {
+    const db = getDB();
     const reports = await db
       .select()
       .from(schema.sessionReports)

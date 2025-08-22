@@ -326,6 +326,7 @@ export class DebugDatabaseService {
     totalEntries: number;
   }> {
     try {
+      const db = getDB();
       const [sessionCount, entryCount] = await Promise.all([
         db.select({ count: sql`count(*)` }).from(schema.debugSessions),
         db.select({ count: sql`count(*)` }).from(schema.debugEntries)
@@ -375,6 +376,7 @@ export class DebugDatabaseService {
   // Cleanup old entries (keep last N entries)
   async cleanupOldEntries(keepLastN: number = 1000): Promise<number> {
     try {
+      const db = getDB();
       // Get the Nth most recent entry timestamp
       const cutoffEntries = await db
         .select({ timestamp: schema.debugEntries.timestamp })

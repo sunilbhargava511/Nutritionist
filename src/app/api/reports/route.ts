@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Fetch report from database
-        const downloadReports = await db
+        const db2 = getDB();
+        const downloadReports = await db2
           .select()
           .from(schema.sessionReports)
           .where(eq(schema.sessionReports.id, downloadReportId))
@@ -86,14 +87,15 @@ export async function POST(request: NextRequest) {
       case 'list':
         const { sessionId: listSessionId } = await request.json();
         
+        const db3 = getDB();
         let allReports;
         if (listSessionId) {
-          allReports = await db
+          allReports = await db3
             .select()
             .from(schema.sessionReports)
             .where(eq(schema.sessionReports.sessionId, listSessionId));
         } else {
-          allReports = await db
+          allReports = await db3
             .select()
             .from(schema.sessionReports);
         }
@@ -119,7 +121,8 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        await db
+        const db4 = getDB();
+        await db4
           .delete(schema.sessionReports)
           .where(eq(schema.sessionReports.id, deleteReportId));
 
@@ -160,7 +163,8 @@ export async function GET(request: NextRequest) {
 
     if (reportId) {
       // Download specific report
-      const getReports = await db
+      const db5 = getDB();
+      const getReports = await db5
         .select()
         .from(schema.sessionReports)
         .where(eq(schema.sessionReports.id, reportId))
@@ -183,14 +187,15 @@ export async function GET(request: NextRequest) {
       });
     } else {
       // List reports
+      const db6 = getDB();
       let getAllReports;
       if (sessionId) {
-        getAllReports = await db
+        getAllReports = await db6
           .select()
           .from(schema.sessionReports)
           .where(eq(schema.sessionReports.sessionId, sessionId));
       } else {
-        getAllReports = await db
+        getAllReports = await db6
           .select()
           .from(schema.sessionReports);
       }
