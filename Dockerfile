@@ -80,11 +80,11 @@ exec "$@"' > /app/init-db.sh && chmod +x /app/init-db.sh
 # Switch to non-root user
 USER nextjs
 
-# Expose port
-EXPOSE 3000
+# Expose port (Railway typically uses 8080)
+EXPOSE 8080
 
-# Set port for Railway (Railway will override this with dynamic port)
-ENV PORT 3000
+# Don't set PORT - let Railway provide it
+# ENV PORT 3000
 
 # Set database path explicitly
 ENV DATABASE_PATH /data/database.sqlite
