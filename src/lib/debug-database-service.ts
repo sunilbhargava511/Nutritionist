@@ -233,7 +233,7 @@ export class DebugDatabaseService {
   // Get recent debug entries with optional time filter
   async getRecentEntries(limit: number = 20, since?: string): Promise<DatabaseDebugEntry[]> {
     try {
-      const baseQuery = db
+      const baseQuery = getDB()
         .select()
         .from(schema.debugEntries);
       
@@ -505,7 +505,7 @@ export class DebugDatabaseService {
         ) as any;
       }
 
-      const query = db
+      const query = getDB()
         .select()
         .from(schema.sessionEvents)
         .where(conditions);
@@ -522,7 +522,7 @@ export class DebugDatabaseService {
   // Get all session events
   async getAllSessionEvents(limit: number = 50, since?: string): Promise<SessionEvent[]> {
     try {
-      const baseQuery = db
+      const baseQuery = getDB()
         .select()
         .from(schema.sessionEvents);
 
