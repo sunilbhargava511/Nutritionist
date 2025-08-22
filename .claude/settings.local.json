@@ -38,8 +38,26 @@
       "Bash(cat:*)",
       "Bash(fly machine destroy:*)",
       "Bash(fly machines list:*)",
-      "Bash(fly machine update:*)"
+      "Bash(fly machine update:*)",
+      "Bash(gh auth:*)",
+      "Bash(railway status:*)",
+      "Bash(railway logs:*)",
+      "Bash(railway variables:*)",
+      "Bash(railway run:*)",
+      "Bash(git init:*)",
+      "Bash(node server.js)",
+      "Bash(railway link:*)",
+      "Bash(railway login:*)",
+      "Bash(railway projects:*)",
+      "Bash(railway up:*)",
+      "Bash(ELEVENLABS_API_KEY=test_key ELEVENLABS_AGENT_ID=test_agent HOSTNAME=0.0.0.0 PORT=3001 node server.js)",
+      "Bash(ELEVENLABS_API_KEY=test_key ELEVENLABS_AGENT_ID=test_agent HOSTNAME=0.0.0.0 PORT=3002 node server.js)",
+      "Bash(DATABASE_PATH=\"./test-database.sqlite\" ELEVENLABS_API_KEY=test_key ELEVENLABS_AGENT_ID=test_agent HOSTNAME=0.0.0.0 PORT=3003 node server.js)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "/private/tmp",
+      "/Users/sunilbhargava"
+    ]
   }
 }

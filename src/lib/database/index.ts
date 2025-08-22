@@ -3,13 +3,51 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
 import path from 'path';
 
-// Database path configuration
+// Database path configuration with Railway fallback
 const getDbPath = () => {
-  return process.env.DATABASE_URL?.startsWith('file:') 
-    ? process.env.DATABASE_URL.replace('file:', '')
-    : process.env.NODE_ENV === 'production' 
-      ? (process.env.DATABASE_PATH || '/data/database.sqlite')
-      : path.join(process.cwd(), 'database.sqlite');
+  // Check for DATABASE_URL first (Railway or other providers)
+  if (process.env.DATABASE_URL?.startsWith('file:')) {
+    return process.env.DATABASE_URL.replace('file:', '');
+  }
+  
+  // Check for DATABASE_PATH (Railway deployment)
+  if (process.env.DATABASE_PATH) {
+    return process.env.DATABASE_PATH;
+  }
+  
+  // Production default (Railway pattern) - use app directory for writing
+  if (process.env.NODE_ENV === 'production') {
+    // Try /data first (if it exists), otherwise use /app (which nextjs user owns)
+    const preferredPath = '/data/database.sqlite';
+    const fallbackPath = path.join('/app', 'database.sqlite');
+    
+    try {
+      const fs = require('fs');
+      const preferredDir = path.dirname(preferredPath);
+      
+      // Check if /data directory exists and is writable
+      if (fs.existsSync(preferredDir)) {
+        try {
+          fs.accessSync(preferredDir, fs.constants.W_OK);
+          console.log(`[DB] Using preferred path: ${preferredPath}`);
+          return preferredPath;
+        } catch (permError) {
+          console.warn(`[DB] /data directory exists but not writable:`, permError);
+        }
+      }
+      
+      // Fallback to /app directory (which nextjs user owns)
+      console.log(`[DB] Using fallback path: ${fallbackPath}`);
+      return fallbackPath;
+      
+    } catch (error) {
+      console.warn(`[DB] Error checking directories:`, error);
+      return fallbackPath;
+    }
+  }
+  
+  // Development default
+  return path.join(process.cwd(), 'database.sqlite');
 };
 
 let sqlite: Database.Database;

@@ -59,11 +59,11 @@ COPY start.sh ./start.sh
 COPY test-server.js ./test-server.js
 COPY database.sqlite* /tmp/
 
-# Create data directory for SQLite volume and set permissions
+# Create data directory for SQLite database (Railway fix)
 RUN mkdir -p /data && \
+    chmod 755 /data && \
     chmod +x start.sh && \
-    chown -R nextjs:nodejs /data && \
-    chown nextjs:nodejs start.sh && \
+    chown -R nextjs:nodejs /app /data && \
     if [ -f /tmp/database.sqlite ]; then \
       chown nextjs:nodejs /tmp/database.sqlite* ; \
     fi
@@ -77,8 +77,8 @@ if [ ! -f /data/database.sqlite ]; then\n\
 fi\n\
 exec "$@"' > /app/init-db.sh && chmod +x /app/init-db.sh
 
-# Run as root for debugging (temporary)
-# USER nextjs
+# Switch to non-root user for security
+USER nextjs
 
 # Expose port (Railway typically uses 8080)
 EXPOSE 8080
