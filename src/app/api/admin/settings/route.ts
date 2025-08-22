@@ -16,7 +16,13 @@ export async function GET() {
   try {
     await ensureDatabase();
     const settings = await adminService.getAdminSettings();
-    const statistics = await adminService.getContentStatistics();
+    
+    let statistics = null;
+    try {
+      statistics = await adminService.getContentStatistics();
+    } catch (statsError) {
+      console.error('Error fetching content statistics:', statsError);
+    }
     
     return NextResponse.json({
       success: true,
