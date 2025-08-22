@@ -54,8 +54,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy startup script and database
+# Copy startup script, test server, and database
 COPY start.sh ./start.sh
+COPY test-server.js ./test-server.js
 COPY database.sqlite* /tmp/
 
 # Create data directory for SQLite volume and set permissions
