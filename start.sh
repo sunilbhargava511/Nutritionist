@@ -37,6 +37,9 @@ echo "========================================="
 # Set DATABASE_PATH explicitly
 export DATABASE_PATH=/data/database.sqlite
 
+# Force binding to all interfaces for Railway
+export HOSTNAME=0.0.0.0
+
 # Start the server
-echo "Starting Next.js server on port ${PORT:-3000}..."
+echo "Starting Next.js server on 0.0.0.0:${PORT:-3000}..."
 exec node server.js
