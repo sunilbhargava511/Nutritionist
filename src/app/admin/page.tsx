@@ -21,7 +21,11 @@ import {
   Play,
   RefreshCw,
   Headphones,
-  BarChart2
+  BarChart2,
+  AlertTriangle,
+  Activity,
+  Terminal,
+  Zap
 } from 'lucide-react';
 import { 
   Lesson,
@@ -32,7 +36,7 @@ import {
 } from '@/types';
 import AppHeader from '@/components/AppHeader';
 
-type AdminTab = 'lessons' | 'settings' | 'prompts' | 'knowledge' | 'reports' | 'opening-messages' | 'audio-management';
+type AdminTab = 'lessons' | 'settings' | 'prompts' | 'knowledge' | 'reports' | 'opening-messages' | 'audio-management' | 'debug';
 type SettingsTab = 'general' | 'voice' | 'ui';
 
 
@@ -49,6 +53,16 @@ export default function AdminPanel() {
   const [audioStats, setAudioStats] = useState<any>({ totalFiles: 0, totalSize: 0, cacheHitRate: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Debug state
+  const [debugInfo, setDebugInfo] = useState<any>({
+    system: {},
+    database: {},
+    apis: {},
+    sessions: [],
+    logs: []
+  });
+  const [debugLoading, setDebugLoading] = useState(false);
   const [draggedLesson, setDraggedLesson] = useState<string | null>(null);
   const [showLessonForm, setShowLessonForm] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
@@ -91,6 +105,13 @@ export default function AdminPanel() {
   useEffect(() => {
     if (currentTab === 'audio-management') {
       loadAudioData();
+    }
+  }, [currentTab]);
+
+  // Load debug data when debug tab is selected
+  useEffect(() => {
+    if (currentTab === 'debug') {
+      loadDebugData();
     }
   }, [currentTab]);
 
@@ -178,6 +199,108 @@ export default function AdminPanel() {
       }
     } catch (err) {
       console.error('Failed to load audio data:', err);
+    }
+  };
+
+  const loadDebugData = async () => {
+    setDebugLoading(true);
+    try {
+      // Collect debug information from various sources
+      const debugData = {
+        system: {
+          timestamp: new Date().toISOString(),
+          nodeVersion: typeof window !== 'undefined' ? 'N/A (client)' : process.version,
+          environment: process.env.NODE_ENV || 'unknown',
+          platform: typeof navigator !== 'undefined' ? navigator.platform : 'server',
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
+        },
+        database: {},
+        apis: {},
+        sessions: [],
+        logs: []
+      };
+
+      // Test key API endpoints
+      const apiTests = [
+        { name: 'Health Check', endpoint: '/api/health' },
+        { name: 'Admin Settings', endpoint: '/api/admin/settings' },
+        { name: 'Opening Messages', endpoint: '/api/admin/opening-messages?type=general' },
+        { name: 'System Prompts', endpoint: '/api/admin/prompts' },
+        { name: 'Knowledge Base', endpoint: '/api/admin/knowledge-base' },
+      ];
+
+      const apiResults = {};
+      
+      for (const test of apiTests) {
+        try {
+          const startTime = Date.now();
+          const response = await fetch(test.endpoint);
+          const endTime = Date.now();
+          
+          apiResults[test.name] = {
+            status: response.status,
+            responseTime: endTime - startTime,
+            ok: response.ok,
+            size: response.headers.get('content-length') || 'unknown'
+          };
+        } catch (error) {
+          apiResults[test.name] = {
+            status: 'ERROR',
+            error: error.message,
+            responseTime: null,
+            ok: false
+          };
+        }
+      }
+
+      debugData.apis = apiResults;
+
+      // Get recent session data for debugging
+      try {
+        const sessionsResponse = await fetch('/api/sessions?action=debug&limit=10');
+        if (sessionsResponse.ok) {
+          const sessionsData = await sessionsResponse.json();
+          debugData.sessions = sessionsData.sessions || [];
+        }
+      } catch (error) {
+        console.error('Failed to load debug sessions:', error);
+      }
+
+      // Get database status
+      try {
+        const dbResponse = await fetch('/api/health');
+        if (dbResponse.ok) {
+          const dbData = await dbResponse.json();
+          debugData.database = {
+            status: dbData.database || 'unknown',
+            timestamp: dbData.timestamp,
+            environment: dbData.environment
+          };
+        }
+      } catch (error) {
+        debugData.database = {
+          status: 'ERROR',
+          error: error.message
+        };
+      }
+
+      // Add browser/client info
+      if (typeof window !== 'undefined') {
+        debugData.system.localStorage = Object.keys(localStorage).length;
+        debugData.system.sessionStorage = Object.keys(sessionStorage).length;
+        debugData.system.cookiesEnabled = navigator.cookieEnabled;
+        debugData.system.language = navigator.language;
+        debugData.system.onLine = navigator.onLine;
+        debugData.system.screen = `${screen.width}x${screen.height}`;
+        debugData.system.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      }
+
+      setDebugInfo(debugData);
+    } catch (error) {
+      console.error('Failed to load debug data:', error);
+      setError('Failed to load debug information');
+    } finally {
+      setDebugLoading(false);
     }
   };
 
@@ -872,6 +995,7 @@ The lesson context will be automatically added to this prompt when used.`;
                 { id: 'opening-messages', label: 'Opening Messages', icon: MessageSquare },
                 { id: 'audio-management', label: 'Audio Management', icon: Volume2, count: audioCache.length },
                 { id: 'reports', label: 'Report Template', icon: BarChart3, count: hasBaseTemplate ? 1 : 0 },
+                { id: 'debug', label: 'Debug & Monitor', icon: AlertTriangle },
                 { id: 'settings', label: 'Settings', icon: Settings },
               ].map(({ id, label, icon: Icon, count }) => (
                 <button
@@ -2799,6 +2923,280 @@ The lesson context will be automatically added to this prompt when used.`;
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Debug & Monitor Tab */}
+          {currentTab === 'debug' && (
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Debug & Monitor</h2>
+                  <p className="text-gray-600">System diagnostics and monitoring tools</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={loadDebugData}
+                    disabled={debugLoading}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${debugLoading ? 'animate-spin' : ''}`} />
+                    {debugLoading ? 'Loading...' : 'Refresh'}
+                  </button>
+                </div>
+              </div>
+
+              {/* System Overview */}
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="w-5 h-5 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">System Status</span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-900">
+                    {debugInfo.database?.status === 'connected' ? 'Healthy' : 'Issues'}
+                  </p>
+                </div>
+
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Zap className="w-5 h-5 text-green-600" />
+                    <span className="text-sm font-medium text-green-800">API Status</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-900">
+                    {Object.values(debugInfo.apis || {}).filter(api => api.ok).length} / {Object.keys(debugInfo.apis || {}).length}
+                  </p>
+                </div>
+
+                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Terminal className="w-5 h-5 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-800">Environment</span>
+                  </div>
+                  <p className="text-lg font-bold text-purple-900">
+                    {debugInfo.system?.environment || 'Unknown'}
+                  </p>
+                </div>
+
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-5 h-5 text-orange-600" />
+                    <span className="text-sm font-medium text-orange-800">Sessions</span>
+                  </div>
+                  <p className="text-2xl font-bold text-orange-900">
+                    {debugInfo.sessions?.length || 0}
+                  </p>
+                </div>
+              </div>
+
+              {/* System Information */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    System Information
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Timestamp:</span>
+                      <span className="font-mono">{debugInfo.system?.timestamp}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Environment:</span>
+                      <span className={`font-medium ${debugInfo.system?.environment === 'production' ? 'text-green-600' : 'text-orange-600'}`}>
+                        {debugInfo.system?.environment}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Platform:</span>
+                      <span className="font-mono">{debugInfo.system?.platform}</span>
+                    </div>
+                    {debugInfo.system?.language && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Language:</span>
+                        <span>{debugInfo.system.language}</span>
+                      </div>
+                    )}
+                    {debugInfo.system?.timezone && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Timezone:</span>
+                        <span>{debugInfo.system.timezone}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Online:</span>
+                      <span className={debugInfo.system?.onLine ? 'text-green-600' : 'text-red-600'}>
+                        {debugInfo.system?.onLine ? 'Connected' : 'Offline'}
+                      </span>
+                    </div>
+                    {debugInfo.system?.localStorage !== undefined && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">LocalStorage Keys:</span>
+                        <span>{debugInfo.system.localStorage}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Database className="w-5 h-5" />
+                    Database Status
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Connection:</span>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        debugInfo.database?.status === 'connected' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {debugInfo.database?.status || 'Unknown'}
+                      </span>
+                    </div>
+                    {debugInfo.database?.timestamp && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Last Check:</span>
+                        <span className="font-mono">
+                          {new Date(debugInfo.database.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    )}
+                    {debugInfo.database?.environment && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">DB Environment:</span>
+                        <span>{debugInfo.database.environment}</span>
+                      </div>
+                    )}
+                    {debugInfo.database?.error && (
+                      <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
+                        <strong>Error:</strong> {debugInfo.database.error}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* API Endpoints Status */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  API Endpoints Status
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-2 px-3 font-medium text-gray-700">Endpoint</th>
+                        <th className="text-left py-2 px-3 font-medium text-gray-700">Status</th>
+                        <th className="text-left py-2 px-3 font-medium text-gray-700">Response Time</th>
+                        <th className="text-left py-2 px-3 font-medium text-gray-700">Size</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(debugInfo.apis || {}).map(([name, info]) => (
+                        <tr key={name} className="border-b border-gray-100">
+                          <td className="py-2 px-3 font-medium">{name}</td>
+                          <td className="py-2 px-3">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              info.ok 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {info.status}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 font-mono">
+                            {info.responseTime ? `${info.responseTime}ms` : 'N/A'}
+                          </td>
+                          <td className="py-2 px-3">
+                            {info.size && info.size !== 'unknown' ? info.size : 'N/A'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Recent Sessions Debug */}
+              {debugInfo.sessions && debugInfo.sessions.length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Terminal className="w-5 h-5" />
+                    Recent Sessions ({debugInfo.sessions.length})
+                  </h3>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {debugInfo.sessions.map((session, index) => (
+                      <div key={index} className="p-3 bg-gray-50 rounded border text-sm">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-mono text-gray-700">
+                            {session.id || session.sessionId || 'Unknown ID'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {session.timestamp || session.createdAt || 'No timestamp'}
+                          </span>
+                        </div>
+                        {session.status && (
+                          <div className="text-xs text-gray-600">
+                            Status: {session.status}
+                          </div>
+                        )}
+                        {session.error && (
+                          <div className="text-xs text-red-600 mt-1">
+                            Error: {session.error}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Environment Variables (Safe ones only) */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Environment Configuration
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">NODE_ENV:</span>
+                      <span className={`font-medium ${
+                        debugInfo.system?.environment === 'production' 
+                          ? 'text-green-600' 
+                          : 'text-orange-600'
+                      }`}>
+                        {debugInfo.system?.environment || 'Unknown'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">API Keys Present:</span>
+                      <span className="text-gray-900">
+                        {typeof window !== 'undefined' && (
+                          <>
+                            ANTHROPIC: {process.env.ANTHROPIC_API_KEY ? '✓' : '✗'} | 
+                            ELEVENLABS: {process.env.ELEVENLABS_API_KEY ? '✓' : '✗'}
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Build Time:</span>
+                      <span className="font-mono text-xs">{new Date().toISOString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Railway Deploy:</span>
+                      <span className={process.env.RAILWAY_ENVIRONMENT ? 'text-green-600' : 'text-gray-400'}>
+                        {process.env.RAILWAY_ENVIRONMENT ? 'Active' : 'Local'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
