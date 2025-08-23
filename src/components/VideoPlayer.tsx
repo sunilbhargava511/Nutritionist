@@ -4,7 +4,9 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 import { Play, Pause, Volume2, VolumeX, Maximize, RotateCcw } from 'lucide-react';
 
 interface VideoPlayerProps {
-  videoUrl: string;
+  videoUrl?: string; // YouTube URL (optional)
+  videoPath?: string; // Uploaded video path (optional)
+  videoType: 'url' | 'upload';
   title?: string;
   onVideoEnd?: () => void;
   onVideoStart?: () => void;
@@ -20,6 +22,8 @@ export interface VideoPlayerRef {
 
 const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoPlayer({
   videoUrl,
+  videoPath,
+  videoType,
   title,
   onVideoEnd,
   onVideoStart,
@@ -37,6 +41,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   const [ttsCompleted, setTtsCompleted] = useState(!waitForTTS); // If not waiting for TTS, mark as completed
   
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Extract YouTube video ID from URL
   const extractVideoId = (url: string): string | null => {
@@ -44,17 +49,29 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
     return match ? match[1] : null;
   };
 
-  const videoId = extractVideoId(videoUrl);
+  const videoId = videoType === 'url' && videoUrl ? extractVideoId(videoUrl) : null;
   
-  // Validate YouTube URL
+  // Validate video source
   useEffect(() => {
-    if (!videoId) {
-      setError('Invalid YouTube URL');
-      setIsLoading(false);
-    } else {
-      setError(null);
+    if (videoType === 'url') {
+      if (!videoUrl) {
+        setError('Video URL is required');
+        setIsLoading(false);
+      } else if (!videoId) {
+        setError('Invalid YouTube URL');
+        setIsLoading(false);
+      } else {
+        setError(null);
+      }
+    } else if (videoType === 'upload') {
+      if (!videoPath) {
+        setError('Video file is required');
+        setIsLoading(false);
+      } else {
+        setError(null);
+      }
     }
-  }, [videoId]);
+  }, [videoType, videoUrl, videoPath, videoId]);
 
   // Handle TTS completion
   const handleTTSComplete = () => {
@@ -201,19 +218,54 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
           </div>
         )}
 
-        {/* YouTube Embed */}
-        <div className="relative pb-[56.25%] h-0"> {/* 16:9 aspect ratio */}
-          <iframe
-            ref={iframeRef}
-            src={getEmbedUrl()}
-            title={title || 'Educational Video'}
-            className="absolute top-0 left-0 w-full h-full"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            onLoad={handleIframeLoad}
-          />
-        </div>
+        {/* Video Content */}
+        {videoType === 'url' ? (
+          // YouTube Embed
+          <div className="relative pb-[56.25%] h-0"> {/* 16:9 aspect ratio */}
+            <iframe
+              ref={iframeRef}
+              src={getEmbedUrl()}
+              title={title || 'Educational Video'}
+              className="absolute top-0 left-0 w-full h-full"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              onLoad={handleIframeLoad}
+            />
+          </div>
+        ) : (
+          // HTML5 Video Player
+          <div className="relative pb-[56.25%] h-0"> {/* 16:9 aspect ratio */}
+            <video
+              ref={videoRef}
+              className="absolute top-0 left-0 w-full h-full"
+              controls
+              autoPlay={autoPlay && ttsCompleted}
+              onLoadedData={() => setIsLoading(false)}
+              onPlay={() => {
+                setIsPlaying(true);
+                if (!hasStarted) {
+                  setHasStarted(true);
+                  onVideoStart?.();
+                }
+              }}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => {
+                setHasEnded(true);
+                setIsPlaying(false);
+                onVideoEnd?.();
+              }}
+              onError={(e) => {
+                console.error('Video error:', e);
+                setError('Failed to load video file');
+                setIsLoading(false);
+              }}
+            >
+              <source src={videoPath} />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        )}
 
         {/* Custom Controls Overlay (Limited functionality with YouTube embeds) */}
         <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">

@@ -52,26 +52,56 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'create': {
-        const { title, videoUrl, videoSummary, prerequisites, orderIndex } = data;
+        const { 
+          title, 
+          videoUrl, 
+          videoPath, 
+          videoType = 'url', 
+          videoMimeType, 
+          videoSize, 
+          videoSummary, 
+          prerequisites, 
+          orderIndex 
+        } = data;
         
-        if (!title || !videoUrl || !videoSummary) {
+        if (!title || !videoSummary) {
           return NextResponse.json(
-            { success: false, error: 'Missing required fields: title, videoUrl, videoSummary' },
+            { success: false, error: 'Missing required fields: title, videoSummary' },
             { status: 400 }
           );
         }
 
-        // Validate YouTube URL
-        if (!lessonService.validateYouTubeUrl(videoUrl)) {
-          return NextResponse.json(
-            { success: false, error: 'Invalid YouTube URL format' },
-            { status: 400 }
-          );
+        // Validate video source based on type
+        if (videoType === 'url') {
+          if (!videoUrl) {
+            return NextResponse.json(
+              { success: false, error: 'Video URL is required for URL type' },
+              { status: 400 }
+            );
+          }
+          // Validate YouTube URL
+          if (!lessonService.validateYouTubeUrl(videoUrl)) {
+            return NextResponse.json(
+              { success: false, error: 'Invalid YouTube URL format' },
+              { status: 400 }
+            );
+          }
+        } else if (videoType === 'upload') {
+          if (!videoPath) {
+            return NextResponse.json(
+              { success: false, error: 'Video path is required for upload type' },
+              { status: 400 }
+            );
+          }
         }
 
         const lesson = await lessonService.createLesson({
           title,
           videoUrl,
+          videoPath,
+          videoType,
+          videoMimeType,
+          videoSize,
           videoSummary,
           prerequisites: prerequisites || [],
           orderIndex

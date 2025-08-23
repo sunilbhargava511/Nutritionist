@@ -5,7 +5,11 @@ import { sql } from 'drizzle-orm';
 export const lessons = sqliteTable('lessons', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
-  videoUrl: text('video_url').notNull(), // YouTube URL
+  videoUrl: text('video_url'), // YouTube URL or external link (nullable now)
+  videoPath: text('video_path'), // Path to uploaded video file
+  videoType: text('video_type').notNull().default('url'), // 'url' | 'upload'
+  videoMimeType: text('video_mime_type'), // For uploaded videos: 'video/mp4', 'video/webm', etc.
+  videoSize: integer('video_size'), // File size in bytes for uploaded videos
   videoSummary: text('video_summary').notNull(), // Context for LLM during Q&A
   startMessage: text('start_message'), // TTS message played before video
   orderIndex: integer('order_index').notNull(),

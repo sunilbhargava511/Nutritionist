@@ -64,6 +64,14 @@ export default function AdminPanel() {
   });
   const [debugLoading, setDebugLoading] = useState(false);
   const [draggedLesson, setDraggedLesson] = useState<string | null>(null);
+  const [videoUploadType, setVideoUploadType] = useState<'url' | 'upload'>('url');
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadedVideoData, setUploadedVideoData] = useState<{
+    videoPath: string;
+    videoMimeType: string;
+    videoSize: number;
+    filename: string;
+  } | null>(null);
   const [showLessonForm, setShowLessonForm] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [editingPrompt, setEditingPrompt] = useState<SystemPrompt | null>(null);
@@ -306,19 +314,60 @@ export default function AdminPanel() {
 
   // Store generated summaries to avoid re-generating
 
+  // Video Upload Handler
+  const handleVideoUpload = async (file: File) => {
+    setUploadingVideo(true);
+    try {
+      const formData = new FormData();
+      formData.append('video', file);
+      
+      const response = await fetch('/api/admin/upload-video', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+      
+      const data = await response.json();
+      if (data.success) {
+        setUploadedVideoData(data);
+        setError(null);
+      } else {
+        throw new Error(data.error || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('Video upload error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to upload video');
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
   // Lesson Management Functions
   const createLesson = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    const lessonData = {
+    const lessonData: any = {
       title: formData.get('title') as string,
-      videoUrl: formData.get('videoUrl') as string,
       videoSummary: formData.get('videoSummary') as string,
       startMessage: formData.get('startMessage') as string || undefined,
       question: formData.get('question') as string,
       prerequisites: JSON.parse((formData.get('prerequisites') as string) || '[]'),
+      videoType: videoUploadType,
     };
+
+    // Add video source based on type
+    if (videoUploadType === 'url') {
+      lessonData.videoUrl = formData.get('videoUrl') as string;
+    } else if (videoUploadType === 'upload' && uploadedVideoData) {
+      lessonData.videoPath = uploadedVideoData.videoPath;
+      lessonData.videoMimeType = uploadedVideoData.videoMimeType;
+      lessonData.videoSize = uploadedVideoData.videoSize;
+    }
     
     try {
       const response = await fetch('/api/lessons', {
@@ -349,14 +398,29 @@ export default function AdminPanel() {
 
     const formData = new FormData(e.currentTarget);
     
-    const updates = {
+    const updates: any = {
       title: formData.get('title') as string,
-      videoUrl: formData.get('videoUrl') as string,
       videoSummary: formData.get('videoSummary') as string,
       startMessage: formData.get('startMessage') as string || undefined,
       question: formData.get('question') as string,
       prerequisites: JSON.parse((formData.get('prerequisites') as string) || '[]'),
+      videoType: videoUploadType,
     };
+
+    // Add video source based on type
+    if (videoUploadType === 'url') {
+      updates.videoUrl = formData.get('videoUrl') as string;
+      // Clear upload fields when switching to URL
+      updates.videoPath = null;
+      updates.videoMimeType = null;
+      updates.videoSize = null;
+    } else if (videoUploadType === 'upload' && uploadedVideoData) {
+      updates.videoPath = uploadedVideoData.videoPath;
+      updates.videoMimeType = uploadedVideoData.videoMimeType;
+      updates.videoSize = uploadedVideoData.videoSize;
+      // Clear URL field when switching to upload
+      updates.videoUrl = null;
+    }
     
     try {
       const response = await fetch('/api/lessons', {
@@ -1063,19 +1127,110 @@ The lesson context will be automatically added to this prompt when used.`;
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        YouTube Video URL
+                        Video Source
                       </label>
-                      <input
-                        type="url"
-                        name="videoUrl"
-                        required
-                        defaultValue={editingLesson?.videoUrl || ''}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="https://www.youtube.com/watch?v=..."
-                      />
-                      <p className="mt-1 text-sm text-gray-500">
-                        YouTube video URL for this lesson
-                      </p>
+                      <div className="mb-4">
+                        <div className="flex gap-4">
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="videoSource"
+                              value="url"
+                              checked={videoUploadType === 'url'}
+                              onChange={() => {
+                                setVideoUploadType('url');
+                                setUploadedVideoData(null);
+                              }}
+                              className="mr-2"
+                            />
+                            Video URL
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="videoSource"
+                              value="upload"
+                              checked={videoUploadType === 'upload'}
+                              onChange={() => {
+                                setVideoUploadType('upload');
+                              }}
+                              className="mr-2"
+                            />
+                            Upload Video
+                          </label>
+                        </div>
+                      </div>
+
+                      {videoUploadType === 'url' && (
+                        <div>
+                          <input
+                            type="url"
+                            name="videoUrl"
+                            required={videoUploadType === 'url'}
+                            defaultValue={editingLesson?.videoUrl || ''}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="https://www.youtube.com/watch?v=..."
+                          />
+                          <p className="mt-1 text-sm text-gray-500">
+                            YouTube or Vimeo video URL for this lesson
+                          </p>
+                        </div>
+                      )}
+
+                      {videoUploadType === 'upload' && (
+                        <div>
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                            <input
+                              type="file"
+                              accept="video/mp4,video/webm,video/mov,video/avi"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  handleVideoUpload(file);
+                                }
+                              }}
+                              className="hidden"
+                              id="video-upload"
+                              disabled={uploadingVideo}
+                            />
+                            <label
+                              htmlFor="video-upload"
+                              className={`cursor-pointer flex flex-col items-center ${uploadingVideo ? 'opacity-50' : ''}`}
+                            >
+                              <Upload className="w-12 h-12 text-gray-400 mb-4" />
+                              {uploadingVideo ? (
+                                <p className="text-sm text-gray-600">Uploading...</p>
+                              ) : (
+                                <>
+                                  <p className="text-sm text-gray-600 mb-2">
+                                    Click to upload video or drag and drop
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    MP4, WebM, MOV, AVI up to 100MB
+                                  </p>
+                                </>
+                              )}
+                            </label>
+                          </div>
+                          
+                          {uploadedVideoData && (
+                            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                              <p className="text-sm text-green-800">
+                                ✓ Video uploaded: {uploadedVideoData.filename}
+                              </p>
+                              <p className="text-xs text-green-600">
+                                Size: {(uploadedVideoData.videoSize / 1024 / 1024).toFixed(1)}MB
+                              </p>
+                            </div>
+                          )}
+
+                          {!uploadedVideoData && videoUploadType === 'upload' && (
+                            <p className="mt-2 text-sm text-red-500">
+                              Please upload a video file before saving the lesson.
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">

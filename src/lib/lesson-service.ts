@@ -13,7 +13,11 @@ export class LessonService {
   // Lesson Management
   async createLesson(lessonData: {
     title: string;
-    videoUrl: string;
+    videoUrl?: string;
+    videoPath?: string;
+    videoType?: string;
+    videoMimeType?: string;
+    videoSize?: number;
     videoSummary: string;
     startMessage?: string;
     orderIndex?: number;
@@ -32,6 +36,10 @@ export class LessonService {
       id: lessonId,
       title: lessonData.title,
       videoUrl: lessonData.videoUrl,
+      videoPath: lessonData.videoPath,
+      videoType: lessonData.videoType || 'url',
+      videoMimeType: lessonData.videoMimeType,
+      videoSize: lessonData.videoSize,
       videoSummary: lessonData.videoSummary,
       startMessage: lessonData.startMessage,
       orderIndex,
@@ -309,6 +317,10 @@ export class LessonService {
       id: dbLesson.id,
       title: dbLesson.title,
       videoUrl: dbLesson.videoUrl,
+      videoPath: dbLesson.videoPath,
+      videoType: dbLesson.videoType || 'url',
+      videoMimeType: dbLesson.videoMimeType,
+      videoSize: dbLesson.videoSize,
       videoSummary: dbLesson.videoSummary,
       startMessage: dbLesson.startMessage,
       orderIndex: dbLesson.orderIndex,

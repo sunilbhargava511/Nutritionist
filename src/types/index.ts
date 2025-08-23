@@ -220,7 +220,11 @@ export interface AudioPlaybackState {
 export interface Lesson {
   id: string;
   title: string;
-  videoUrl: string;
+  videoUrl?: string; // YouTube URL or external link (optional)
+  videoPath?: string; // Path to uploaded video file (optional)
+  videoType: 'url' | 'upload'; // Type of video source
+  videoMimeType?: string; // MIME type for uploaded videos
+  videoSize?: number; // File size in bytes for uploaded videos
   videoSummary: string;
   startMessage?: string; // TTS message played before video
   orderIndex: number;
