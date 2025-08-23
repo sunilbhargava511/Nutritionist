@@ -61,12 +61,11 @@ export default function ConversationalAI({
       if (details.conversationId) {
         conversationIdRef.current = details.conversationId;
         
-        // Update educational session to use ElevenLabs conversation_id
+        // Optionally update educational session with conversation_id - don't fail if it doesn't work
         const tempEducationalSessionId = localStorage.getItem('currentEducationalSessionId');
         if (tempEducationalSessionId) {
-          console.log('🔍 [FRONTEND-DEBUG] Updating educational session to use conversation_id:', details.conversationId);
+          console.log('🔍 [FRONTEND-DEBUG] Attempting to link educational session to conversation_id:', details.conversationId);
           
-          // Update session to use ElevenLabs conversation_id and mark first chunk as sent
           fetch('/api/educational-session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -77,14 +76,13 @@ export default function ConversationalAI({
             })
           }).then(response => {
             if (response.ok) {
-              console.log('🔍 [FRONTEND-DEBUG] Educational session updated with conversation_id successfully');
-              // Update localStorage to use the conversation_id
+              console.log('🔍 [FRONTEND-DEBUG] Educational session linked successfully');
               localStorage.setItem('currentEducationalSessionId', details.conversationId);
             } else {
-              console.error('🔍 [FRONTEND-DEBUG] Failed to update educational session');
+              console.log('🔍 [FRONTEND-DEBUG] Educational session linking skipped - continuing with conversation');
             }
           }).catch(error => {
-            console.error('[Real FTherapy] Error updating educational session:', error);
+            console.log('[Real FTherapy] Educational session linking failed - continuing with conversation');
           });
         }
       }
@@ -188,56 +186,47 @@ export default function ConversationalAI({
         return "Hello! I'm Sanjay, your AI financial advisor. I'm here to help you with your financial questions and planning. What would you like to discuss today?";
       }
 
-      // Get the first chunk of educational content directly from educational session
-      const response = await fetch('/api/educational-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'get_current_chunk',
-          sessionId: educationalSessionId
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate educational content');
-      }
-
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to generate educational content');
+      // Simple check if educational session exists - don't fail if it doesn't
+      try {
+        const response = await fetch('/api/educational-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'get_session_state',
+            sessionId: educationalSessionId
+          }),
+        });
+        
+        if (!response.ok) {
+          console.log('[Real FTherapy] Educational session not found, will use default message');
+        }
+      } catch (error) {
+        console.log('[Real FTherapy] Educational session check failed, will use default message');
       }
 
       // Store session ID for use throughout the conversation
       setSessionId(educationalSessionId);
       
-      // Get the chunk content to return as firstMessage (legacy chunk system)
-      const chunkContent = data.chunk.content;
-      // Note: chunk.question field removed - using generic fallback
-      const chunkQuestion = data.chunk.question || "What are your thoughts on this topic?";
-      const firstMessage = `${chunkContent}\n\n${chunkQuestion}`;
+      // Try to get a custom opening message
+      let firstMessage = "Hello! I'm Sanjay, your AI nutritionist advisor. I'm here to help you understand nutrition and make healthier food choices. What would you like to learn about today?";
       
-      // CRITICAL: Mark chunk 1 as delivered since ElevenLabs will speak it as firstMessage
-      // This ensures the database reflects that chunk 1 has been delivered before first webhook call
-      console.log('🔧 [CHUNK-DELIVERY] Marking chunk 1 as delivered via ElevenLabs firstMessage');
       try {
-        const advanceResponse = await fetch('/api/educational-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'advance_chunk',
-            sessionId: educationalSessionId
-          })
-        });
-        
-        if (advanceResponse.ok) {
-          console.log('✅ [CHUNK-DELIVERY] Successfully advanced to chunk 2 after firstMessage delivery');
-        } else {
-          console.error('❌ [CHUNK-DELIVERY] Failed to advance chunk after firstMessage');
+        const openingResponse = await fetch('/api/admin/opening-messages?type=general');
+        if (openingResponse.ok) {
+          const openingData = await openingResponse.json();
+          if (openingData.success && openingData.message) {
+            firstMessage = openingData.message.messageContent || openingData.message;
+            console.log('[Real FTherapy] Using custom opening message');
+          }
         }
       } catch (error) {
-        console.error('[CHUNK-DELIVERY] Error advancing chunk:', error);
+        console.log('[Real FTherapy] Using default opening message');
       }
+      
+      console.log('[Real FTherapy] Opening message prepared');
+      
+      // No need to advance chunks - the conversation will be handled naturally
+      console.log('🔧 [CONVERSATION] Starting conversation with opening message');
       
       return firstMessage;
     } catch (error) {
@@ -263,10 +252,10 @@ export default function ConversationalAI({
       // Step 2: Request microphone permission first (FTherapy pattern)
       await requestMicrophonePermission();
       
-      // Step 3: Create educational session BEFORE generating welcome message
+      // Step 3: Optional educational session creation - don't fail if it doesn't work
       const educationalSessionId = localStorage.getItem('currentEducationalSessionId');
       if (educationalSessionId) {
-        console.log('[Real FTherapy] Creating educational session before welcome message');
+        console.log('[Real FTherapy] Attempting to create educational session');
         try {
           const createResponse = await fetch('/api/educational-session', {
             method: 'POST',
@@ -274,17 +263,16 @@ export default function ConversationalAI({
             body: JSON.stringify({
               action: 'create',
               sessionId: educationalSessionId,
-              // No explicit personalization/conversation aware settings - will use admin defaults
             })
           });
           
           if (createResponse.ok) {
             console.log('✅ [EARLY-CREATE] Educational session created successfully');
           } else {
-            console.error('❌ [EARLY-CREATE] Failed to create educational session:', await createResponse.text());
+            console.log('ℹ️ [EARLY-CREATE] Educational session creation skipped - using default conversation');
           }
         } catch (error) {
-          console.error('[EARLY-CREATE] Error creating educational session:', error);
+          console.log('[EARLY-CREATE] Educational session creation failed - using default conversation');
         }
       }
       
