@@ -985,7 +985,7 @@ The lesson context will be automatically added to this prompt when used.`;
           <div className="w-64 bg-white rounded-xl shadow-sm border border-gray-200 h-fit">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Admin Panel</h3>
-              <p className="text-sm text-gray-500">Manage educational content</p>
+              <p className="text-sm text-gray-500">Manage educational content & monitoring</p>
             </div>
             <nav className="p-4 space-y-2">
               {[
