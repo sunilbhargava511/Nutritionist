@@ -18,7 +18,10 @@ import {
   Heart,
   Activity,
   Award,
-  Salad
+  Salad,
+  Menu,
+  X,
+  Shield
 } from 'lucide-react';
 import { Session, Lesson } from '@/types';
 import { EnhancedSessionStorage } from '@/lib/session-enhanced';
@@ -35,7 +38,20 @@ export default function HomePage() {
   const [userName] = useState('Sarah'); // Could be dynamic from user settings
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
   
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMenu && !(event.target as Element)?.closest('.menu-container')) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu]);
+
   useEffect(() => {
     // Load recent sessions
     const sessions = EnhancedSessionStorage.getAllSessions().slice(0, 5);
@@ -291,6 +307,86 @@ export default function HomePage() {
               <span style={{ color: '#1a1a1a' }}>Hi, {userName}</span>
               <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold" style={{ background: 'linear-gradient(135deg, #2d7d46, #4ca666)' }}>
                 {userName.charAt(0)}
+              </div>
+              {/* Hamburger Menu Button */}
+              <div className="menu-container relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                  style={{ color: '#2d7d46' }}
+                >
+                  {showMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                </button>
+
+                {/* Dropdown Menu */}
+                {showMenu && (
+                  <div className="absolute right-0 top-full w-64 bg-white shadow-lg border border-gray-200 rounded-lg mt-2 z-50">
+                    <div className="py-2">
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <div className="text-sm font-medium text-gray-900">Menu</div>
+                        <div className="text-xs text-gray-500">Navigation & Settings</div>
+                      </div>
+                      
+                      <button
+                        onClick={() => {
+                          window.open('/admin', '_blank');
+                          setShowMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                      >
+                        <Shield className="w-5 h-5 text-blue-600" />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">Admin Panel</div>
+                          <div className="text-xs text-gray-500">Manage system settings</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentView('knowledge');
+                          setShowMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                      >
+                        <BookOpen className="w-5 h-5 text-green-600" />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">Knowledge Base</div>
+                          <div className="text-xs text-gray-500">Browse all lessons</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentView('sessions');
+                          setShowMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                      >
+                        <History className="w-5 h-5 text-purple-600" />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">Session History</div>
+                          <div className="text-xs text-gray-500">View past conversations</div>
+                        </div>
+                      </button>
+
+                      <div className="border-t border-gray-100 mt-2 pt-2">
+                        <button
+                          onClick={() => {
+                            setShowMenu(false);
+                            alert('Settings coming soon!');
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                        >
+                          <Settings className="w-5 h-5 text-gray-600" />
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">Settings</div>
+                            <div className="text-xs text-gray-500">User preferences</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
