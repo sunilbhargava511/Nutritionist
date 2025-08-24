@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'set_general': {
-        const { messageContent, voiceSettings } = data;
+        const { messageContent, voiceSettings, isGenerated } = data;
         
         if (!messageContent) {
           return NextResponse.json(
@@ -78,7 +78,9 @@ export async function POST(request: NextRequest) {
 
         const message = await openingMessageService.setGeneralOpeningMessage(
           messageContent,
-          voiceSettings
+          voiceSettings,
+          true, // generateAudio
+          isGenerated || false // Track if AI-generated
         );
 
         return NextResponse.json({ 
@@ -89,7 +91,7 @@ export async function POST(request: NextRequest) {
       }
 
       case 'set_lesson': {
-        const { lessonId, messageContent, voiceSettings } = data;
+        const { lessonId, messageContent, voiceSettings, isGenerated } = data;
         
         if (!lessonId || !messageContent) {
           return NextResponse.json(
@@ -101,7 +103,9 @@ export async function POST(request: NextRequest) {
         const message = await openingMessageService.setLessonIntroMessage(
           lessonId,
           messageContent,
-          voiceSettings
+          voiceSettings,
+          true, // generateAudio
+          isGenerated || false // Track if AI-generated
         );
 
         return NextResponse.json({ 

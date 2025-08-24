@@ -39,9 +39,16 @@ export async function POST(request: NextRequest) {
       ? 'https://thegoldenpath.fly.dev' 
       : 'http://localhost:3000';
       
+    // Pass through persona settings from the incoming request
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const personaSettings = request.headers.get('x-persona-settings');
+    if (personaSettings) {
+      headers['x-persona-settings'] = personaSettings;
+    }
+      
     const generalConversationResponse = await fetch(`${baseUrl}/api/start-general-conversation`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify({
         lessonId: lesson.id,
         lessonTitle: lesson.title,

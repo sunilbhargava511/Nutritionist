@@ -227,6 +227,9 @@ export interface Lesson {
   videoSize?: number; // File size in bytes for uploaded videos
   videoSummary: string;
   startMessage?: string; // TTS message played before video
+  videoTranscript?: string; // Full transcript extracted from YouTube
+  transcriptExtractedAt?: Date; // When transcript was extracted
+  transcriptLanguage?: string; // Language of transcript
   orderIndex: number;
   prerequisites: string[]; // Lesson IDs that must be completed first
   active: boolean;

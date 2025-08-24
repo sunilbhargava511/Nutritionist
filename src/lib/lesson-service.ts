@@ -311,6 +311,48 @@ export class LessonService {
     return match ? match[1] : null;
   }
 
+  // Knowledge Base Integration
+  async syncTranscriptToKnowledgeBase(lessonId: string): Promise<void> {
+    const lesson = await this.getLesson(lessonId);
+    if (!lesson || !lesson.videoTranscript) return;
+
+    const { adminService } = await import('./admin-service');
+    
+    // Create a file-like object for the transcript
+    const transcriptContent = `# ${lesson.title} - Transcript\n\n${lesson.videoTranscript}`;
+    const fileName = `lesson_transcript_${lesson.id}.md`;
+    
+    // Create a Blob to mimic a file upload
+    const blob = new Blob([transcriptContent], { type: 'text/markdown' });
+    const file = new File([blob], fileName, { type: 'text/markdown' });
+
+    try {
+      await adminService.uploadKnowledgeBaseFile(file, transcriptContent);
+    } catch (error) {
+      console.error(`Failed to sync transcript for lesson ${lessonId}:`, error);
+    }
+  }
+
+  async syncAllTranscriptsToKnowledgeBase(): Promise<{ synced: number; errors: number }> {
+    const lessons = await this.getAllLessons();
+    let synced = 0;
+    let errors = 0;
+
+    for (const lesson of lessons) {
+      if (lesson.videoTranscript) {
+        try {
+          await this.syncTranscriptToKnowledgeBase(lesson.id);
+          synced++;
+        } catch (error) {
+          errors++;
+          console.error(`Failed to sync transcript for lesson ${lesson.id}:`, error);
+        }
+      }
+    }
+
+    return { synced, errors };
+  }
+
   // Utility Methods
   private convertDatabaseLesson(dbLesson: any): Lesson {
     return {
@@ -323,6 +365,9 @@ export class LessonService {
       videoSize: dbLesson.videoSize,
       videoSummary: dbLesson.videoSummary,
       startMessage: dbLesson.startMessage,
+      videoTranscript: dbLesson.videoTranscript,
+      transcriptExtractedAt: dbLesson.transcriptExtractedAt ? new Date(dbLesson.transcriptExtractedAt) : undefined,
+      transcriptLanguage: dbLesson.transcriptLanguage,
       orderIndex: dbLesson.orderIndex,
       prerequisites: dbLesson.prerequisites ? JSON.parse(dbLesson.prerequisites) : [],
       active: Boolean(dbLesson.active),

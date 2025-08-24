@@ -107,6 +107,15 @@ export async function POST(request: NextRequest) {
           orderIndex
         });
 
+        // If the lesson has a transcript, sync it to knowledge base
+        if (lesson.videoTranscript) {
+          try {
+            await lessonService.syncTranscriptToKnowledgeBase(lesson.id);
+          } catch (error) {
+            console.warn('Failed to sync transcript to knowledge base:', error);
+          }
+        }
+
         return NextResponse.json({ 
           success: true, 
           lesson,
@@ -208,6 +217,16 @@ export async function PUT(request: NextRequest) {
         }
 
         await lessonService.updateLesson(lessonId, updates);
+        
+        // If the updates include a transcript or this is a lesson with a transcript, sync to knowledge base
+        const updatedLesson = await lessonService.getLesson(lessonId);
+        if (updatedLesson?.videoTranscript) {
+          try {
+            await lessonService.syncTranscriptToKnowledgeBase(lessonId);
+          } catch (error) {
+            console.warn('Failed to sync updated transcript to knowledge base:', error);
+          }
+        }
         
         return NextResponse.json({ 
           success: true, 

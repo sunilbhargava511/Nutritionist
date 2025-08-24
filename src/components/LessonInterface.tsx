@@ -93,10 +93,42 @@ export default function LessonInterface({
   // Handle video completion
   const handleVideoEnd = async () => {
     try {
+      // Get current persona settings from localStorage
+      const savedPersona = localStorage.getItem('content_generation_persona') || 'default';
+      const savedGender = localStorage.getItem('persona_gender') || 'female';
+      const savedCustomPerson = localStorage.getItem('custom_person') || '';
+      
+      // Build persona prompt (matching the admin panel logic)
+      const personaTemplates = {
+        default: 'You are a knowledgeable nutrition educator providing clear, evidence-based information.',
+        friendly: 'You are a friendly nutrition coach who provides warm, encouraging guidance with a supportive and motivating tone.',
+        expert: 'You are a nutrition scientist providing detailed, research-backed information with technical precision and authority.',
+        conversational: 'You are a knowledgeable friend sharing nutrition insights in casual, everyday language that anyone can understand.',
+        motivational: 'You are an inspiring nutrition coach who motivates people to achieve their health goals with energy and enthusiasm.'
+      };
+      
+      let enhancedPrompt = personaTemplates[savedPersona as keyof typeof personaTemplates] || personaTemplates.default;
+      const genderVoice = savedGender === 'male' ? 'masculine' : 'feminine';
+      enhancedPrompt += ` Write with a ${genderVoice} voice and perspective.`;
+      
+      if (savedCustomPerson.trim()) {
+        enhancedPrompt += ` ${savedCustomPerson.trim()}.`;
+      }
+      
+      const personaSettings = {
+        basePersona: savedPersona,
+        gender: savedGender,
+        customPerson: savedCustomPerson,
+        enhancedPrompt: enhancedPrompt
+      };
+
       // Start lesson conversation
       const response = await fetch('/api/start-lesson-conversation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-persona-settings': JSON.stringify(personaSettings)
+        },
         body: JSON.stringify({ lessonId, sessionId })
       });
 

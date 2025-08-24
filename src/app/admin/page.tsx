@@ -25,7 +25,9 @@ import {
   AlertTriangle,
   Activity,
   Terminal,
-  Zap
+  Zap,
+  Sparkles,
+  Home
 } from 'lucide-react';
 import { 
   Lesson,
@@ -36,12 +38,23 @@ import {
 } from '@/types';
 import AppHeader from '@/components/AppHeader';
 
-type AdminTab = 'lessons' | 'settings' | 'prompts' | 'knowledge' | 'reports' | 'opening-messages' | 'audio-management' | 'debug';
-type SettingsTab = 'general' | 'voice' | 'ui';
+type AdminTab = 'overview' | 'lessons' | 'personas' | 'settings' | 'prompts' | 'knowledge' | 'reports' | 'opening-messages' | 'audio-management' | 'debug';
+type SettingsTab = 'general' | 'ui';
+
+interface Persona {
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+  gender: 'male' | 'female';
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 
 export default function AdminPanel() {
-  const [currentTab, setCurrentTab] = useState<AdminTab>('lessons');
+  const [currentTab, setCurrentTab] = useState<AdminTab>('overview');
   const [currentSettingsTab, setCurrentSettingsTab] = useState<SettingsTab>('general');
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [settings, setSettings] = useState<AdminSettings | null>(null);
@@ -51,6 +64,8 @@ export default function AdminPanel() {
   const [openingMessages, setOpeningMessages] = useState<any>({ general: null, lessonMessages: [], lessons: [] });
   const [audioCache, setAudioCache] = useState<any[]>([]);
   const [audioStats, setAudioStats] = useState<any>({ totalFiles: 0, totalSize: 0, cacheHitRate: 0 });
+  const [serviceSummary, setServiceSummary] = useState<any>({ serviceDescription: '', keyBenefits: '' });
+  const [syncingTranscripts, setSyncingTranscripts] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -72,6 +87,55 @@ export default function AdminPanel() {
     videoSize: number;
     filename: string;
   } | null>(null);
+  
+  // YouTube transcript generation state
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<{
+    title: string;
+    summary: string;
+    startMessage: string;
+    transcript: string;
+    wordCount: number;
+    duration: string;
+    keyTopics: string[];
+  } | null>(null);
+  
+  // Enhanced field state tracking
+  const [fieldStates, setFieldStates] = useState<{
+    title: {
+      status: 'empty' | 'generated' | 'edited' | 'saved';
+      isGenerated: boolean;
+      hasUnsavedChanges: boolean;
+    };
+    videoSummary: {
+      status: 'empty' | 'generated' | 'edited' | 'saved';
+      isGenerated: boolean;
+      hasUnsavedChanges: boolean;
+    };
+    startMessage: {
+      status: 'empty' | 'generated' | 'edited' | 'saved';
+      isGenerated: boolean;
+      hasUnsavedChanges: boolean;
+    };
+  }>({
+    title: { status: 'empty', isGenerated: false, hasUnsavedChanges: false },
+    videoSummary: { status: 'empty', isGenerated: false, hasUnsavedChanges: false },
+    startMessage: { status: 'empty', isGenerated: false, hasUnsavedChanges: false }
+  });
+  
+  const [originalGeneratedContent, setOriginalGeneratedContent] = useState({
+    title: '',
+    videoSummary: '',
+    startMessage: ''
+  });
+  
+  const [formData, setFormData] = useState({
+    title: '',
+    videoUrl: '',
+    videoSummary: '',
+    startMessage: '',
+    prerequisites: '[]'
+  });
   const [showLessonForm, setShowLessonForm] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [editingPrompt, setEditingPrompt] = useState<SystemPrompt | null>(null);
@@ -85,6 +149,53 @@ export default function AdminPanel() {
     showReportsToggle: true,
     showKnowledgeCitations: false
   });
+
+  // Conversation Style Settings
+  const [contentPersona, setContentPersona] = useState('default');
+  const [personaGender, setPersonaGender] = useState<'male' | 'female'>('female');
+  const [customPerson, setCustomPerson] = useState('');
+
+  const [openingMessageFieldStates, setOpeningMessageFieldStates] = useState<{[messageId: string]: {
+    status: 'empty' | 'generated' | 'edited' | 'saved';
+    isGenerated: boolean;
+    hasUnsavedChanges: boolean;
+    originalGeneratedContent?: string;
+  }}>({});
+
+  // Opening message form data for editing
+  const [openingMessageFormData, setOpeningMessageFormData] = useState<{[messageId: string]: string}>({});
+  
+  // Opening message styling state
+  const [isStylingMessage, setIsStylingMessage] = useState<{[messageId: string]: boolean}>({});
+  
+  // Persona templates
+  const personaTemplates = {
+    default: {
+      name: 'Default',
+      description: 'Balanced, professional nutrition education tone',
+      prompt: 'You are a knowledgeable nutrition educator providing clear, evidence-based information.'
+    },
+    friendly: {
+      name: 'Friendly Coach',
+      description: 'Warm, encouraging, and supportive tone',
+      prompt: 'You are a friendly nutrition coach who provides warm, encouraging guidance with a supportive and motivating tone.'
+    },
+    expert: {
+      name: 'Expert Scientist',
+      description: 'Technical, research-focused, authoritative tone',
+      prompt: 'You are a nutrition scientist providing detailed, research-backed information with technical precision and authority.'
+    },
+    conversational: {
+      name: 'Conversational Guide',
+      description: 'Casual, relatable, everyday language',
+      prompt: 'You are a knowledgeable friend sharing nutrition insights in casual, everyday language that anyone can understand.'
+    },
+    motivational: {
+      name: 'Motivational Speaker',
+      description: 'Inspiring, energetic, goal-focused tone',
+      prompt: 'You are an inspiring nutrition coach who motivates people to achieve their health goals with energy and enthusiasm.'
+    }
+  };
   const baseTemplateInputRef = useRef<HTMLInputElement>(null);
 
   // Load UI preferences from localStorage
@@ -97,12 +208,217 @@ export default function AdminPanel() {
         console.error('Error loading UI preferences:', error);
       }
     }
+
+    // Load persona settings
+    const savedPersona = localStorage.getItem('content_generation_persona');
+    if (savedPersona && personaTemplates[savedPersona as keyof typeof personaTemplates]) {
+      setContentPersona(savedPersona);
+    }
+    
+    const savedGender = localStorage.getItem('persona_gender');
+    if (savedGender === 'male' || savedGender === 'female') {
+      setPersonaGender(savedGender);
+    }
+    
+    const savedCustomPerson = localStorage.getItem('custom_person');
+    if (savedCustomPerson) {
+      setCustomPerson(savedCustomPerson);
+    }
   }, []);
   
   // Save UI preferences to localStorage when they change
   useEffect(() => {
     localStorage.setItem('admin_ui_preferences', JSON.stringify(uiPreferences));
   }, [uiPreferences]);
+
+  // Save conversation style to database when settings change
+  const saveConversationStyle = async (basePersona: string, gender: 'male' | 'female', customPerson: string) => {
+    try {
+      const selectedPersona = personaTemplates[basePersona as keyof typeof personaTemplates];
+      let enhancedPrompt = selectedPersona?.prompt || 'You are a knowledgeable nutrition educator providing clear, evidence-based information.';
+      
+      const genderVoice = gender === 'male' ? 'masculine' : 'feminine';
+      enhancedPrompt += ` Write with a ${genderVoice} voice and perspective.`;
+      
+      if (customPerson.trim()) {
+        enhancedPrompt += ` ${customPerson.trim()}.`;
+      }
+      
+      const response = await fetch('/api/admin/conversation-style', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          basePersona,
+          gender,
+          customPerson,
+          enhancedPrompt
+        })
+      });
+      
+      if (response.ok) {
+        console.log('Conversation style saved to database');
+      } else {
+        console.error('Failed to save conversation style');
+      }
+    } catch (error) {
+      console.error('Error saving conversation style:', error);
+    }
+  };
+
+
+  // Style opening message with LLM
+  const styleOpeningMessage = async (messageId: string, userInput: string, messageType: 'general' | 'lesson' = 'general', lessonId?: string) => {
+    setIsStylingMessage(prev => ({ ...prev, [messageId]: true }));
+    setError(null);
+
+    try {
+      const response = await fetch('/api/admin/style-opening-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'style_message',
+          messageId,
+          userInput,
+          messageType,
+          lessonId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to style message');
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        const styledContent = data.styledContent || data.message?.messageContent || userInput;
+        
+        // Update the textarea with styled content
+        const textarea = document.querySelector('textarea[name="generalMessage"]') as HTMLTextAreaElement;
+        if (textarea) {
+          textarea.value = styledContent;
+        }
+
+        // Update form data
+        const key = messageType === 'general' ? 'general' : lessonId || '';
+        setOpeningMessageFormData(prev => ({
+          ...prev,
+          [key]: styledContent
+        }));
+      }
+    } catch (error) {
+      console.error('Error styling message:', error);
+      setError(error instanceof Error ? error.message : 'Failed to style message');
+    } finally {
+      setIsStylingMessage(prev => ({ ...prev, [messageId]: false }));
+    }
+  };
+
+
+  // Handle opening message field changes
+  const handleOpeningMessageFieldChange = (messageKey: string, value: string) => {
+    setOpeningMessageFormData(prev => ({ ...prev, [messageKey]: value }));
+    
+    // Update field state
+    setOpeningMessageFieldStates(prev => ({
+      ...prev,
+      [messageKey]: {
+        ...prev[messageKey],
+        status: value ? (prev[messageKey]?.isGenerated ? 'edited' : 'edited') : 'empty',
+        isGenerated: false, // Once edited, no longer purely generated
+        hasUnsavedChanges: true
+      }
+    }));
+  };
+
+  // Revert opening message to generated content
+  const revertOpeningMessageToGenerated = (messageKey: string) => {
+    const fieldState = openingMessageFieldStates[messageKey];
+    if (fieldState?.originalGeneratedContent) {
+      setOpeningMessageFormData(prev => ({
+        ...prev,
+        [messageKey]: fieldState.originalGeneratedContent!
+      }));
+      
+      setOpeningMessageFieldStates(prev => ({
+        ...prev,
+        [messageKey]: {
+          ...prev[messageKey],
+          status: 'generated',
+          isGenerated: true,
+          hasUnsavedChanges: true // Still needs to be saved
+        }
+      }));
+    }
+  };
+
+  // Get status badge for opening message fields
+  const getOpeningMessageStatusBadge = (messageKey: string) => {
+    const state = openingMessageFieldStates[messageKey];
+    
+    if (!state || state.status === 'empty') {
+      return null;
+    }
+    
+    if (state.hasUnsavedChanges) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+          ⚠️ Unsaved
+        </span>
+      );
+    }
+    
+    if (state.isGenerated) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          🤖 Generated
+        </span>
+      );
+    }
+    
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+        ✏️ Edited
+      </span>
+    );
+  };
+
+  // Auto-save conversation style when settings change
+  useEffect(() => {
+    if (contentPersona && personaGender) {
+      saveConversationStyle(contentPersona, personaGender, customPerson);
+    }
+  }, [contentPersona, personaGender, customPerson]);
+
+  // Save service summary
+  const saveServiceSummary = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const serviceDescription = formData.get('serviceDescription') as string;
+    const keyBenefits = formData.get('keyBenefits') as string;
+
+    try {
+      const response = await fetch('/api/admin/service-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceDescription,
+          keyBenefits
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setServiceSummary(data.summary);
+        setError(null);
+      } else {
+        setError('Failed to save service summary');
+      }
+    } catch (err) {
+      setError('Failed to save service summary');
+    }
+  };
 
   // Load initial data
   useEffect(() => {
@@ -122,20 +438,74 @@ export default function AdminPanel() {
       loadDebugData();
     }
   }, [currentTab]);
+  
+  // Initialize form data when editing lesson or creating new one
+  useEffect(() => {
+    if (editingLesson) {
+      setFormData({
+        title: editingLesson.title,
+        videoUrl: editingLesson.videoUrl || '',
+        videoSummary: editingLesson.videoSummary,
+        startMessage: editingLesson.startMessage || '',
+        prerequisites: JSON.stringify(editingLesson.prerequisites || [])
+      });
+      
+      // Set field states based on existing content
+      setFieldStates({
+        title: {
+          status: 'saved',
+          isGenerated: false, // We don't know if it was generated, assume edited for existing content
+          hasUnsavedChanges: false
+        },
+        videoSummary: {
+          status: 'saved',
+          isGenerated: false, // We don't know if it was generated, assume edited for existing content
+          hasUnsavedChanges: false
+        },
+        startMessage: {
+          status: editingLesson.startMessage ? 'saved' : 'empty',
+          isGenerated: false,
+          hasUnsavedChanges: false
+        }
+      });
+    } else if (showLessonForm && !editingLesson) {
+      // Reset for new lesson
+      setFormData({
+        title: '',
+        videoUrl: '',
+        videoSummary: '',
+        startMessage: '',
+        prerequisites: '[]'
+      });
+      
+      setFieldStates({
+        title: { status: 'empty', isGenerated: false, hasUnsavedChanges: false },
+        videoSummary: { status: 'empty', isGenerated: false, hasUnsavedChanges: false },
+        startMessage: { status: 'empty', isGenerated: false, hasUnsavedChanges: false }
+      });
+      
+      setOriginalGeneratedContent({
+        videoSummary: '',
+        startMessage: ''
+      });
+    }
+  }, [editingLesson, showLessonForm]);
 
   const loadData = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const [lessonsRes, settingsRes, promptsRes, knowledgeRes, reportsRes, templateRes, openingMessagesRes] = await Promise.all([
+      const [lessonsRes, settingsRes, promptsRes, knowledgeRes, reportsRes, templateRes, openingMessagesRes, conversationStyleRes, serviceSummaryRes] = await Promise.all([
         fetch('/api/lessons'),
         fetch('/api/admin/settings'),
         fetch('/api/admin/prompts'),
         fetch('/api/admin/knowledge-base'),
         fetch('/api/reports'),
         fetch('/api/admin/base-template'),
-        fetch('/api/admin/opening-messages')
+        fetch('/api/admin/opening-messages'),
+        fetch('/api/admin/conversation-style'),
+        fetch('/api/admin/service-summary')
       ]);
 
       if (lessonsRes.ok) {
@@ -172,6 +542,19 @@ export default function AdminPanel() {
       if (openingMessagesRes.ok) {
         const openingMessagesData = await openingMessagesRes.json();
         setOpeningMessages(openingMessagesData);
+      }
+
+      if (conversationStyleRes.ok) {
+        const conversationStyleData = await conversationStyleRes.json();
+        const settings = conversationStyleData.settings;
+        setContentPersona(settings.basePersona);
+        setPersonaGender(settings.gender);
+        setCustomPerson(settings.customPerson);
+      }
+      
+      if (serviceSummaryRes.ok) {
+        const serviceSummaryData = await serviceSummaryRes.json();
+        setServiceSummary(serviceSummaryData.summary || { serviceDescription: '', keyBenefits: '' });
       }
     } catch (err) {
       setError('Failed to load admin data');
@@ -312,7 +695,249 @@ export default function AdminPanel() {
     }
   };
 
-  // Store generated summaries to avoid re-generating
+  // Field management utility functions
+  const handleFieldChange = (fieldName: 'title' | 'videoSummary' | 'startMessage', value: string) => {
+    setFormData(prev => ({ ...prev, [fieldName]: value }));
+    
+    // Update field state
+    setFieldStates(prev => ({
+      ...prev,
+      [fieldName]: {
+        ...prev[fieldName],
+        status: value ? (prev[fieldName].isGenerated ? 'edited' : 'edited') : 'empty',
+        isGenerated: false, // Once edited, it's no longer purely generated
+        hasUnsavedChanges: true
+      }
+    }));
+  };
+  
+  const handleRevertToGenerated = (fieldName: 'title' | 'videoSummary' | 'startMessage') => {
+    const originalContent = originalGeneratedContent[fieldName];
+    if (originalContent) {
+      setFormData(prev => ({ ...prev, [fieldName]: originalContent }));
+      
+      // Only update field states for tracked fields (not title)
+      if (fieldName !== 'title') {
+        setFieldStates(prev => ({
+          ...prev,
+          [fieldName]: {
+            status: 'generated',
+            isGenerated: true,
+            hasUnsavedChanges: true // Still needs to be saved
+          }
+        }));
+      }
+    }
+  };
+  
+  const getFieldStatusBadge = (fieldName: 'title' | 'videoSummary' | 'startMessage') => {
+    const state = fieldStates[fieldName];
+    
+    if (state.status === 'empty') {
+      return null;
+    }
+    
+    if (state.hasUnsavedChanges) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+          ⚠️ Unsaved
+        </span>
+      );
+    }
+    
+    if (state.isGenerated) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          🤖 Generated
+        </span>
+      );
+    }
+    
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+        ✏️ Edited
+      </span>
+    );
+  };
+
+  // YouTube Content Generation Handler
+  const handleGenerateFromYouTube = async (videoUrl: string, title: string, lessonId?: string) => {
+    if (!videoUrl.trim()) {
+      setError('Please enter a YouTube URL first');
+      return;
+    }
+
+    setIsGeneratingContent(true);
+    setError(null);
+
+    try {
+      console.log('[Admin] Generating content from YouTube URL:', videoUrl);
+      
+      const selectedPersona = personaTemplates[contentPersona as keyof typeof personaTemplates];
+      
+      // Build enhanced persona prompt
+      let enhancedPrompt = selectedPersona.prompt;
+      
+      // Add gender specification
+      const genderVoice = personaGender === 'male' ? 'masculine' : 'feminine';
+      enhancedPrompt += ` Write with a ${genderVoice} voice and perspective.`;
+      
+      // Add custom person specification if provided
+      if (customPerson.trim()) {
+        enhancedPrompt += ` ${customPerson.trim()}.`;
+      }
+      
+      const response = await fetch('/api/admin/youtube-transcript', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoUrl: videoUrl.trim(),
+          title: title?.trim() || 'Nutrition Lesson',
+          lessonId: lessonId,
+          persona: {
+            name: `${selectedPersona.name} (${personaGender})${customPerson ? ` - ${customPerson}` : ''}`,
+            prompt: enhancedPrompt
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate content');
+      }
+
+      // Use AI-generated title from the API response
+      const generatedTitle = data.title || title?.trim() || `Nutrition Lesson: ${data.keyTopics?.[0] || 'Health & Wellness'}`;
+      
+      // Store generated content
+      setGeneratedContent({
+        summary: data.summary,
+        startMessage: data.startMessage,
+        transcript: data.transcript,
+        wordCount: data.wordCount,
+        duration: data.duration,
+        keyTopics: data.keyTopics || [],
+        title: generatedTitle
+      });
+
+      console.log('[Admin] Content generated successfully');
+      
+      // Store original generated content for revert functionality
+      setOriginalGeneratedContent({
+        title: generatedTitle,
+        videoSummary: data.summary,
+        startMessage: data.startMessage
+      });
+      
+      // Update form data with generated content including title
+      setFormData(prev => ({
+        ...prev,
+        title: generatedTitle,
+        videoSummary: data.summary,
+        startMessage: data.startMessage
+      }));
+      
+      // Auto-save the generated content immediately
+      if (lessonId) {
+        // Update existing lesson
+        try {
+          const saveResponse = await fetch('/api/lessons', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'update',
+              lessonId: lessonId,
+              title: generatedTitle,
+              videoSummary: data.summary,
+              startMessage: data.startMessage,
+              videoUrl: videoUrl.trim(),
+              videoType: 'url'
+            })
+          });
+          
+          if (saveResponse.ok) {
+            console.log('[Admin] Generated content auto-saved successfully');
+            
+            // Mark fields as generated and saved
+            setFieldStates({
+              title: {
+                status: 'saved',
+                isGenerated: true,
+                hasUnsavedChanges: false
+              },
+              videoSummary: {
+                status: 'saved',
+                isGenerated: true,
+                hasUnsavedChanges: false
+              },
+              startMessage: {
+                status: 'saved',
+                isGenerated: true,
+                hasUnsavedChanges: false
+              }
+            });
+            
+            // Reload data to reflect changes
+            await loadData();
+          } else {
+            throw new Error('Auto-save failed');
+          }
+        } catch (autoSaveError) {
+          console.warn('[Admin] Auto-save failed:', autoSaveError);
+          // Still mark as generated but unsaved on auto-save failure
+          setFieldStates({
+            title: {
+              status: 'generated',
+              isGenerated: true,
+              hasUnsavedChanges: true
+            },
+            videoSummary: {
+              status: 'generated',
+              isGenerated: true,
+              hasUnsavedChanges: true
+            },
+            startMessage: {
+              status: 'generated',
+              isGenerated: true,
+              hasUnsavedChanges: true
+            }
+          });
+        }
+      } else {
+        // For new lessons, mark as generated (will be saved on Create Lesson)
+        setFieldStates({
+          title: {
+            status: 'generated',
+            isGenerated: true,
+            hasUnsavedChanges: false // Will auto-save when created
+          },
+          videoSummary: {
+            status: 'generated',
+            isGenerated: true,
+            hasUnsavedChanges: false // Will auto-save when created
+          },
+          startMessage: {
+            status: 'generated',
+            isGenerated: true,
+            hasUnsavedChanges: false // Will auto-save when created
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('[Admin] Content generation failed:', error);
+      setError(error instanceof Error ? error.message : 'Failed to generate content from YouTube video');
+      setGeneratedContent(null);
+    } finally {
+      setIsGeneratingContent(false);
+    }
+  };
 
   // Video Upload Handler
   const handleVideoUpload = async (file: File) => {
@@ -349,20 +974,18 @@ export default function AdminPanel() {
   // Lesson Management Functions
   const createLesson = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
     
     const lessonData: any = {
-      title: formData.get('title') as string,
-      videoSummary: formData.get('videoSummary') as string,
-      startMessage: formData.get('startMessage') as string || undefined,
-      question: formData.get('question') as string,
-      prerequisites: JSON.parse((formData.get('prerequisites') as string) || '[]'),
+      title: formData.title,
+      videoSummary: formData.videoSummary,
+      startMessage: formData.startMessage || undefined,
+      prerequisites: JSON.parse(formData.prerequisites || '[]'),
       videoType: videoUploadType,
     };
 
     // Add video source based on type
     if (videoUploadType === 'url') {
-      lessonData.videoUrl = formData.get('videoUrl') as string;
+      lessonData.videoUrl = formData.videoUrl;
     } else if (videoUploadType === 'upload' && uploadedVideoData) {
       lessonData.videoPath = uploadedVideoData.videoPath;
       lessonData.videoMimeType = uploadedVideoData.videoMimeType;
@@ -381,8 +1004,29 @@ export default function AdminPanel() {
 
       if (response.ok) {
         await loadData();
-        (e.target as HTMLFormElement).reset();
+        
+        // Reset field states to saved
+        setFieldStates({
+          title: {
+            status: 'saved',
+            isGenerated: fieldStates.title.isGenerated,
+            hasUnsavedChanges: false
+          },
+          videoSummary: {
+            status: 'saved',
+            isGenerated: fieldStates.videoSummary.isGenerated,
+            hasUnsavedChanges: false
+          },
+          startMessage: {
+            status: 'saved',
+            isGenerated: fieldStates.startMessage.isGenerated,
+            hasUnsavedChanges: false
+          }
+        });
+        
+        // Reset form
         setShowLessonForm(false);
+        setGeneratedContent(null);
       } else {
         const error = await response.json();
         setError(error.error || 'Failed to create lesson');
@@ -395,21 +1039,18 @@ export default function AdminPanel() {
   const updateLesson = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingLesson) return;
-
-    const formData = new FormData(e.currentTarget);
     
     const updates: any = {
-      title: formData.get('title') as string,
-      videoSummary: formData.get('videoSummary') as string,
-      startMessage: formData.get('startMessage') as string || undefined,
-      question: formData.get('question') as string,
-      prerequisites: JSON.parse((formData.get('prerequisites') as string) || '[]'),
+      title: formData.title,
+      videoSummary: formData.videoSummary,
+      startMessage: formData.startMessage || undefined,
+      prerequisites: JSON.parse(formData.prerequisites || '[]'),
       videoType: videoUploadType,
     };
 
     // Add video source based on type
     if (videoUploadType === 'url') {
-      updates.videoUrl = formData.get('videoUrl') as string;
+      updates.videoUrl = formData.videoUrl;
       // Clear upload fields when switching to URL
       updates.videoPath = null;
       updates.videoMimeType = null;
@@ -434,6 +1075,25 @@ export default function AdminPanel() {
       });
 
       if (response.ok) {
+        // Update field states to 'saved' after successful update
+        setFieldStates(prev => ({
+          title: {
+            ...prev.title,
+            status: prev.title.status === 'empty' ? 'empty' : 'saved',
+            hasUnsavedChanges: false
+          },
+          videoSummary: {
+            ...prev.videoSummary,
+            status: prev.videoSummary.status === 'empty' ? 'empty' : 'saved',
+            hasUnsavedChanges: false
+          },
+          startMessage: {
+            ...prev.startMessage,
+            status: prev.startMessage.status === 'empty' ? 'empty' : 'saved',
+            hasUnsavedChanges: false
+          }
+        }));
+        
         await loadData();
         setEditingLesson(null);
       } else {
@@ -1053,6 +1713,7 @@ The lesson context will be automatically added to this prompt when used.`;
             </div>
             <nav className="p-4 space-y-2">
               {[
+                { id: 'overview', label: 'Overview', icon: Home },
                 { id: 'lessons', label: 'Lessons', icon: FileText, count: lessons.length },
                 { id: 'prompts', label: 'System Prompts', icon: Database, count: prompts.length },
                 { id: 'knowledge', label: 'Knowledge Base', icon: Upload, count: knowledgeFiles.length },
@@ -1087,6 +1748,348 @@ The lesson context will be automatically added to this prompt when used.`;
 
           {/* Main Content */}
           <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200">
+          {currentTab === 'overview' && (
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Overview</h2>
+              
+              {/* Service Summary */}
+              <div className="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Service Summary</h3>
+                <p className="text-sm text-gray-700 mb-4">
+                  Describe what your service offers and how it helps clients. This summary will be used throughout the application and in opening messages.
+                </p>
+                <form onSubmit={saveServiceSummary} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Service Description (10-20 lines)
+                    </label>
+                    <textarea
+                      name="serviceDescription"
+                      rows={12}
+                      defaultValue={serviceSummary.serviceDescription}
+                      placeholder="We provide comprehensive nutrition education and counseling services designed to help individuals achieve their health and wellness goals. Our AI-powered platform combines evidence-based nutrition science with personalized guidance to create effective, sustainable dietary changes.
+
+Our services include:
+- Personalized nutrition assessments and planning
+- Interactive educational modules covering key nutrition topics  
+- One-on-one AI consultations for specific dietary questions
+- Evidence-based meal planning and recipe recommendations
+- Ongoing support and progress tracking
+
+Whether you're looking to lose weight, manage a health condition, improve athletic performance, or simply eat healthier, our comprehensive approach ensures you receive the knowledge and tools needed for long-term success.
+
+Our certified nutrition professionals have developed this platform to make quality nutrition guidance accessible, affordable, and convenient for everyone."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      This description will be used in opening messages and throughout the platform to explain your services.
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Key Benefits (one per line)
+                    </label>
+                    <textarea
+                      name="keyBenefits"
+                      rows={6}
+                      defaultValue={serviceSummary.keyBenefits}
+                      placeholder="Evidence-based nutrition guidance
+Personalized meal planning and recommendations  
+Interactive learning modules with expert instruction
+24/7 AI support for nutrition questions
+Progress tracking and goal setting tools
+Affordable alternative to traditional nutrition counseling"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      List the main benefits clients receive from your service.
+                    </p>
+                  </div>
+                  
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium"
+                  >
+                    Save Service Summary
+                  </button>
+                </form>
+              </div>
+
+              {/* Service Provider Information */}
+              <div className="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                <h3 className="text-lg font-semibold text-blue-900 mb-4">Service Provider Information</h3>
+                <p className="text-sm text-blue-700 mb-4">
+                  This information drives the opening messages and website branding.
+                </p>
+                <form className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-blue-800 mb-1">
+                        Business Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Your Business Name"
+                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-blue-800 mb-1">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="(555) 123-4567"
+                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-blue-800 mb-1">
+                      Address
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="123 Main Street, City, State 12345"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-blue-800 mb-1">
+                        Email (Optional)
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="contact@yourbusiness.com"
+                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-blue-800 mb-1">
+                        Website (Optional)
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="www.yourbusiness.com"
+                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+                  >
+                    Save Service Provider Info
+                  </button>
+                </form>
+              </div>
+
+              {/* Website Configuration */}
+              <div className="mb-8 p-6 bg-green-50 rounded-lg border border-green-200">
+                <h3 className="text-lg font-semibold text-green-900 mb-4">Website Configuration</h3>
+                <p className="text-sm text-green-700 mb-4">
+                  Customize what your educational content is called and how it's described.
+                </p>
+                <form className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-green-800 mb-1">
+                        What are your lessons called?
+                      </label>
+                      <input
+                        type="text"
+                        defaultValue="Lessons"
+                        placeholder="e.g., Modules, Sessions, Courses"
+                        className="w-full px-3 py-2 border border-green-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-green-800 mb-1">
+                        What does open conversation cover?
+                      </label>
+                      <input
+                        type="text"
+                        defaultValue="Chat"
+                        placeholder="e.g., Q&A, Discussion, Consultation"
+                        className="w-full px-3 py-2 border border-green-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-green-800 mb-1">
+                        Lesson Description
+                      </label>
+                      <input
+                        type="text"
+                        defaultValue="Educational video content"
+                        placeholder="Brief description of your lessons"
+                        className="w-full px-3 py-2 border border-green-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-green-800 mb-1">
+                        Conversation Description
+                      </label>
+                      <input
+                        type="text"
+                        defaultValue="Open conversation with AI"
+                        placeholder="Brief description of conversations"
+                        className="w-full px-3 py-2 border border-green-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
+                  >
+                    Save Website Config
+                  </button>
+                </form>
+              </div>
+
+              {/* Conversation Style & Voice Settings */}
+              <div className="p-6 bg-purple-50 rounded-lg border border-purple-200">
+                <h3 className="text-lg font-semibold text-purple-900 mb-4">Conversation Style & Voice</h3>
+                <p className="text-sm text-purple-700 mb-4">
+                  Configure the personality and voice characteristics for AI conversations.
+                </p>
+                
+                {/* Persona Style Selection */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-purple-800 mb-2">Base Style</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {Object.entries(personaTemplates).map(([key, persona]) => (
+                      <div key={key} className="relative">
+                        <input
+                          type="radio"
+                          id={`persona-${key}`}
+                          name="content-persona"
+                          value={key}
+                          checked={contentPersona === key}
+                          onChange={(e) => setContentPersona(e.target.value)}
+                          className="sr-only"
+                        />
+                        <label
+                          htmlFor={`persona-${key}`}
+                          className={`block p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            contentPersona === key
+                              ? 'border-purple-500 bg-purple-100 ring-2 ring-purple-200'
+                              : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50'
+                          }`}
+                        >
+                          <div className="font-medium text-sm text-gray-900 mb-1">
+                            {persona.name}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            {persona.description}
+                          </div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Gender and Custom Person Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  {/* Gender Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-purple-800 mb-2">Voice Gender</label>
+                    <div className="flex gap-3">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="persona-gender"
+                          value="female"
+                          checked={personaGender === 'female'}
+                          onChange={(e) => setPersonaGender(e.target.value as 'male' | 'female')}
+                          className="mr-2 text-purple-600"
+                        />
+                        <span className="text-sm text-gray-700">Female</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="persona-gender"
+                          value="male"
+                          checked={personaGender === 'male'}
+                          onChange={(e) => setPersonaGender(e.target.value as 'male' | 'female')}
+                          className="mr-2 text-purple-600"
+                        />
+                        <span className="text-sm text-gray-700">Male</span>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  {/* Custom Person Field */}
+                  <div>
+                    <label className="block text-sm font-medium text-purple-800 mb-2">
+                      Custom Personality (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={customPerson}
+                      onChange={(e) => setCustomPerson(e.target.value)}
+                      placeholder="e.g., like Norah Ephron with references to Manhattan"
+                      className="w-full px-3 py-2 text-sm border border-purple-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+                
+                {/* Voice Settings from Settings Tab */}
+                <div className="border-t border-purple-200 pt-4">
+                  <h4 className="text-sm font-medium text-purple-800 mb-3">Voice Settings</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-purple-800 mb-1">
+                        ElevenLabs Voice ID
+                      </label>
+                      <input
+                        type="text"
+                        name="voiceId"
+                        defaultValue={settings?.voiceId || ''}
+                        className="w-full px-3 py-2 border border-purple-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                        placeholder="e.g., pNInz6obpgDQGcFmaJgB"
+                      />
+                      <p className="mt-1 text-xs text-purple-600">
+                        The ElevenLabs voice ID to use for all audio generation
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-purple-800 mb-1">
+                        Voice Characteristics
+                      </label>
+                      <textarea
+                        name="voiceDescription"
+                        rows={2}
+                        defaultValue={settings?.voiceDescription || ''}
+                        className="w-full px-3 py-2 border border-purple-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                        placeholder="e.g., Make voice deeper and slower, less nasal"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 p-3 bg-purple-100 rounded-md">
+                  <p className="text-xs text-purple-700">
+                    <strong>Current Style:</strong> {personaTemplates[contentPersona as keyof typeof personaTemplates].name} • 
+                    <strong> Gender:</strong> {personaGender === 'male' ? 'Male' : 'Female'} voice
+                    {customPerson && <> • <strong>Custom:</strong> {customPerson}</>}
+                  </p>
+                </div>
+                
+                <button
+                  type="button"
+                  className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium"
+                >
+                  Save Style & Voice Settings
+                </button>
+              </div>
+            </div>
+          )}
           {currentTab === 'lessons' && (
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -1105,6 +2108,7 @@ The lesson context will be automatically added to this prompt when used.`;
                 </div>
               </div>
 
+
               {/* Create/Edit Lesson Form */}
               {(showLessonForm || editingLesson) && (
                 <form onSubmit={editingLesson ? updateLesson : createLesson} className="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -1113,14 +2117,27 @@ The lesson context will be automatically added to this prompt when used.`;
                   </h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Lesson Title
-                      </label>
+                      <div className="flex items-center gap-2 mb-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Lesson Title
+                        </label>
+                        {originalGeneratedContent.title && (
+                          <button
+                            type="button"
+                            onClick={() => handleRevertToGenerated('title')}
+                            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600"
+                          >
+                            Revert
+                          </button>
+                        )}
+                        {getFieldStatusBadge('title')}
+                      </div>
                       <input
                         type="text"
                         name="title"
                         required
-                        defaultValue={editingLesson?.title || ''}
+                        value={formData.title}
+                        onChange={(e) => handleFieldChange('title', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                         placeholder="e.g., Introduction to Retirement Planning"
                       />
@@ -1163,17 +2180,73 @@ The lesson context will be automatically added to this prompt when used.`;
 
                       {videoUploadType === 'url' && (
                         <div>
-                          <input
-                            type="url"
-                            name="videoUrl"
-                            required={videoUploadType === 'url'}
-                            defaultValue={editingLesson?.videoUrl || ''}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="https://www.youtube.com/watch?v=..."
-                          />
+                          <div className="flex gap-2">
+                            <input
+                              type="url"
+                              name="videoUrl"
+                              id="videoUrl"
+                              required={videoUploadType === 'url'}
+                              value={formData.videoUrl}
+                              onChange={(e) => setFormData(prev => ({ ...prev, videoUrl: e.target.value }))}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="https://www.youtube.com/watch?v=..."
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleGenerateFromYouTube(
+                                  formData.videoUrl || '', 
+                                  formData.title || '',
+                                  editingLesson?.id
+                                );
+                              }}
+                              disabled={isGeneratingContent}
+                              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-md hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 min-w-[140px] justify-center transition-all duration-200"
+                            >
+                              {isGeneratingContent ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  <span>Generating...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="w-4 h-4" />
+                                  <span>Auto-Generate</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
                           <p className="mt-1 text-sm text-gray-500">
-                            YouTube or Vimeo video URL for this lesson
+                            YouTube URL for this lesson. Click "Auto-Generate" to extract transcript and create summary & intro.
                           </p>
+                          
+                          {/* Generated Content Display */}
+                          {generatedContent && (
+                            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-center gap-2 mb-3">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span className="text-sm font-medium text-green-800">
+                                  Content Generated Successfully
+                                </span>
+                                <span className="text-xs text-green-600">
+                                  ({generatedContent.wordCount} words, {generatedContent.duration})
+                                </span>
+                              </div>
+                              
+                              {generatedContent.keyTopics.length > 0 && (
+                                <div className="mb-3">
+                                  <span className="text-xs font-medium text-green-700">Key Topics: </span>
+                                  <span className="text-xs text-green-600">
+                                    {generatedContent.keyTopics.join(', ')}
+                                  </span>
+                                </div>
+                              )}
+                              
+                              <p className="text-xs text-green-700">
+                                ✓ Summary and start message have been automatically filled in the form below.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1233,14 +2306,27 @@ The lesson context will be automatically added to this prompt when used.`;
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Video Summary (for LLM Context)
-                      </label>
+                      <div className="flex items-center gap-2 mb-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Video Summary (for LLM Context)
+                        </label>
+                        {getFieldStatusBadge('videoSummary')}
+                        {fieldStates.videoSummary.isGenerated && (
+                          <button
+                            type="button"
+                            onClick={() => handleRevertToGenerated('videoSummary')}
+                            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600"
+                          >
+                            Revert
+                          </button>
+                        )}
+                      </div>
                       <textarea
                         name="videoSummary"
                         required
                         rows={4}
-                        defaultValue={editingLesson?.videoSummary || ''}
+                        value={formData.videoSummary}
+                        onChange={(e) => handleFieldChange('videoSummary', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Summarize the key concepts covered in this video for the AI to use during Q&A..."
                       />
@@ -1249,13 +2335,26 @@ The lesson context will be automatically added to this prompt when used.`;
                       </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Start Message (TTS Introduction)
-                      </label>
+                      <div className="flex items-center gap-2 mb-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Start Message (TTS Introduction)
+                        </label>
+                        {getFieldStatusBadge('startMessage')}
+                        {fieldStates.startMessage.isGenerated && (
+                          <button
+                            type="button"
+                            onClick={() => handleRevertToGenerated('startMessage')}
+                            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600"
+                          >
+                            Revert
+                          </button>
+                        )}
+                      </div>
                       <textarea
                         name="startMessage"
                         rows={3}
-                        defaultValue={editingLesson?.startMessage || ''}
+                        value={formData.startMessage}
+                        onChange={(e) => handleFieldChange('startMessage', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Welcome to this lesson on retirement planning. Before we watch the video, let me introduce what you'll be learning today..."
                       />
@@ -1270,7 +2369,8 @@ The lesson context will be automatically added to this prompt when used.`;
                       <textarea
                         name="prerequisites"
                         rows={2}
-                        defaultValue={JSON.stringify(editingLesson?.prerequisites || [])}
+                        value={formData.prerequisites}
+                        onChange={(e) => setFormData(prev => ({ ...prev, prerequisites: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                         placeholder='["lesson_id_1", "lesson_id_2"]'
                       />
@@ -1433,7 +2533,6 @@ The lesson context will be automatically added to this prompt when used.`;
                 <nav className="-mb-px flex space-x-8">
                   {[
                     { id: 'general', name: 'General', icon: Settings },
-                    { id: 'voice', name: 'Voice Settings', icon: Settings },
                     { id: 'ui', name: 'UI Settings', icon: Settings }
                   ].map(({ id, name, icon: Icon }) => (
                     <button
@@ -1513,136 +2612,6 @@ The lesson context will be automatically added to this prompt when used.`;
                 </form>
               )}
 
-              {/* Voice Settings */}
-              {currentSettingsTab === 'voice' && (
-                <form onSubmit={updateSettings} className="max-w-2xl space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ElevenLabs Voice ID
-                    </label>
-                    <input
-                      type="text"
-                      name="voiceId"
-                      defaultValue={settings?.voiceId || ''}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="e.g., pNInz6obpgDQGcFmaJgB"
-                    />
-                    <p className="mt-1 text-sm text-gray-500">
-                      The ElevenLabs voice ID to use for all audio generation
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Voice Characteristics
-                    </label>
-                    <textarea
-                      name="voiceDescription"
-                      rows={3}
-                      defaultValue={settings?.voiceDescription || ''}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="e.g., Make voice deeper and slower, less nasal, more authoritative"
-                    />
-                    <p className="mt-1 text-sm text-gray-500">
-                      Describe how you want the voice to sound using natural language
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Currency Formatting
-                    </label>
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <input
-                          type="radio"
-                          id="currencyRupees"
-                          name="currencyFormat"
-                          value="rupees"
-                          defaultChecked={true}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                        />
-                        <label htmlFor="currencyRupees" className="ml-2 block text-sm text-gray-900">
-                          Always say "rupees" (recommended for voice)
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="radio"
-                          id="currencySymbol"
-                          name="currencyFormat"
-                          value="symbol"
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                        />
-                        <label htmlFor="currencySymbol" className="ml-2 block text-sm text-gray-900">
-                          Use symbols (₹, Rs) for text display
-                        </label>
-                      </div>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Choose how currency should be formatted in voice responses
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Number Formatting
-                    </label>
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="spellOutNumbers"
-                          name="spellOutNumbers"
-                          defaultChecked={true}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label htmlFor="spellOutNumbers" className="ml-2 block text-sm text-gray-900">
-                          Spell out numbers ("thirty thousand" instead of "30K")
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="useIndianSystem"
-                          name="useIndianSystem"
-                          defaultChecked={true}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label htmlFor="useIndianSystem" className="ml-2 block text-sm text-gray-900">
-                          Use Indian number system ("one lakh", "one crore")
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Response Length
-                    </label>
-                    <input
-                      type="number"
-                      name="maxResponseSeconds"
-                      defaultValue={45}
-                      min={15}
-                      max={120}
-                      className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-500">seconds maximum</span>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Maximum length for voice responses to maintain engagement
-                    </p>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
-                  >
-                    <Save className="w-4 h-4" />
-                    Save Voice Settings
-                  </button>
-                </form>
-              )}
 
               {/* UI Settings */}
               {currentSettingsTab === 'ui' && (
@@ -2229,13 +3198,44 @@ The lesson context will be automatically added to this prompt when used.`;
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-gray-900">Knowledge Base</h2>
-                <button
-                  onClick={() => setShowUploadKnowledgeForm(!showUploadKnowledgeForm)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  <Upload className="w-4 h-4" />
-                  {showUploadKnowledgeForm ? 'Cancel' : 'Upload File'}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowUploadKnowledgeForm(!showUploadKnowledgeForm)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {showUploadKnowledgeForm ? 'Cancel' : 'Upload File'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!confirm('This will sync all lesson transcripts to the knowledge base. Continue?')) return;
+                      
+                      setSyncingTranscripts(true);
+                      try {
+                        const response = await fetch('/api/admin/sync-transcripts', {
+                          method: 'POST',
+                        });
+                        
+                        const result = await response.json();
+                        if (result.success) {
+                          alert(`${result.message}\n\nSynced: ${result.synced} transcripts\nErrors: ${result.errors}`);
+                          await loadData(); // Reload knowledge base files
+                        } else {
+                          setError('Failed to sync transcripts to knowledge base');
+                        }
+                      } catch (err) {
+                        setError('Failed to sync transcripts to knowledge base');
+                      } finally {
+                        setSyncingTranscripts(false);
+                      }
+                    }}
+                    disabled={syncingTranscripts}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${syncingTranscripts ? 'animate-spin' : ''}`} />
+                    {syncingTranscripts ? 'Syncing...' : 'Sync Transcripts'}
+                  </button>
+                </div>
               </div>
 
               {/* Upload Form */}
@@ -2352,18 +3352,17 @@ The lesson context will be automatically added to this prompt when used.`;
 
               {/* General Opening Message */}
               <div className="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
-                <h3 className="text-lg font-semibold text-blue-900 mb-4">General Opening Message</h3>
-                <p className="text-sm text-blue-700 mb-4">
-                  Spoken when users start an open-ended conversation (not lesson-based)
-                </p>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-blue-900">General Opening Message</h3>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Spoken when users start an open-ended conversation (not lesson-based)
+                    </p>
+                  </div>
+                </div>
                 
                 {openingMessages.general ? (
                   <div className="space-y-4">
-                    <div className="p-4 bg-white rounded border">
-                      <div className="text-sm font-medium text-gray-700 mb-2">Current Message:</div>
-                      <div className="text-gray-900">{openingMessages.general.messageContent}</div>
-                    </div>
-                    
                     <form 
                       onSubmit={async (e) => {
                         e.preventDefault();
@@ -2371,18 +3370,13 @@ The lesson context will be automatically added to this prompt when used.`;
                         const messageContent = formData.get('generalMessage') as string;
                         
                         try {
-                          const response = await fetch('/api/admin/opening-messages', {
+                          const response = await fetch('/api/admin/style-opening-message', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                              action: 'set_general',
-                              messageContent,
-                              voiceSettings: {
-                                voiceId: 'MXGyTMlsvQgQ4BL0emIa',
-                                speed: 0.85,
-                                stability: 0.6,
-                                similarityBoost: 0.8
-                              }
+                              action: 'direct_update',
+                              messageId: openingMessages.general.id,
+                              userInput: messageContent
                             })
                           });
                           
@@ -2400,23 +3394,48 @@ The lesson context will be automatically added to this prompt when used.`;
                     >
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Update Message:
+                          Opening Message:
                         </label>
                         <textarea
                           name="generalMessage"
                           defaultValue={openingMessages.general.messageContent}
-                          rows={3}
-                          className="w-full p-3 border border-gray-300 rounded-md"
+                          onChange={(e) => handleOpeningMessageFieldChange('general', e.target.value)}
+                          rows={4}
+                          className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="Enter the opening message..."
                         />
                       </div>
-                      <button
-                        type="submit"
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                      >
-                        <Save className="w-4 h-4" />
-                        Update General Message
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const textarea = document.querySelector('textarea[name="generalMessage"]') as HTMLTextAreaElement;
+                            const currentValue = textarea?.value || openingMessageFormData['general'] || '';
+                            styleOpeningMessage(openingMessages.general.id, currentValue, 'general');
+                          }}
+                          disabled={isStylingMessage[openingMessages.general.id]}
+                          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isStylingMessage[openingMessages.general.id] ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>Styling...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4" />
+                              <span>Style Message</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="submit"
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                        >
+                          <Save className="w-4 h-4" />
+                          Save Message
+                        </button>
+                      </div>
                     </form>
                   </div>
                 ) : (

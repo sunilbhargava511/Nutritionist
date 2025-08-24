@@ -182,6 +182,57 @@ function createTables(sqlite: Database.Database) {
       )
     `);
     
+    // Create service_provider table
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS service_provider (
+        id text PRIMARY KEY DEFAULT 'default' NOT NULL,
+        business_name text DEFAULT '' NOT NULL,
+        address text DEFAULT '' NOT NULL,
+        phone_number text DEFAULT '' NOT NULL,
+        email text DEFAULT '',
+        website text DEFAULT '',
+        created_at text DEFAULT (CURRENT_TIMESTAMP),
+        updated_at text DEFAULT (CURRENT_TIMESTAMP)
+      )
+    `);
+    
+    // Create website_config table
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS website_config (
+        id text PRIMARY KEY DEFAULT 'default' NOT NULL,
+        lessons_name text DEFAULT 'Lessons' NOT NULL,
+        lessons_description text DEFAULT 'Educational video content' NOT NULL,
+        conversation_name text DEFAULT 'Chat' NOT NULL,
+        conversation_description text DEFAULT 'Open conversation with AI' NOT NULL,
+        created_at text DEFAULT (CURRENT_TIMESTAMP),
+        updated_at text DEFAULT (CURRENT_TIMESTAMP)
+      )
+    `);
+    
+    // Create conversation_style table
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS conversation_style (
+        id text PRIMARY KEY DEFAULT 'default' NOT NULL,
+        base_persona text DEFAULT 'default' NOT NULL,
+        gender text DEFAULT 'female' NOT NULL,
+        custom_person text DEFAULT '' NOT NULL,
+        enhanced_prompt text NOT NULL,
+        created_at text DEFAULT (CURRENT_TIMESTAMP),
+        updated_at text DEFAULT (CURRENT_TIMESTAMP)
+      )
+    `);
+    
+    // Create service_summary table
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS service_summary (
+        id text PRIMARY KEY DEFAULT 'default' NOT NULL,
+        service_description text DEFAULT '' NOT NULL,
+        key_benefits text DEFAULT '' NOT NULL,
+        created_at text DEFAULT (CURRENT_TIMESTAMP),
+        updated_at text DEFAULT (CURRENT_TIMESTAMP)
+      )
+    `);
+    
     console.log('[DB] Tables created successfully');
   } catch (error) {
     console.error('[DB] Error creating tables:', error);
@@ -255,6 +306,81 @@ Generate a detailed session summary that would be valuable for the user's financ
       ]);
       
       console.log('✅ Default system prompts created');
+    }
+
+    // Check if we need to seed default service provider
+    const existingServiceProvider = await getDB().select().from(schema.serviceProvider).limit(1);
+    
+    if (existingServiceProvider.length === 0) {
+      await getDB().insert(schema.serviceProvider).values({
+        id: 'default',
+        businessName: 'Your Financial Advisory',
+        address: '123 Main Street, City, State 12345',
+        phoneNumber: '(555) 123-4567',
+        email: 'contact@yourfirm.com',
+        website: 'www.yourfirm.com',
+      });
+      
+      console.log('✅ Default service provider created');
+    }
+
+    // Check if we need to seed default website config
+    const existingWebsiteConfig = await getDB().select().from(schema.websiteConfig).limit(1);
+    
+    if (existingWebsiteConfig.length === 0) {
+      await getDB().insert(schema.websiteConfig).values({
+        id: 'default',
+        lessonsName: 'Lessons',
+        lessonsDescription: 'Educational video content',
+        conversationName: 'Chat',
+        conversationDescription: 'Open conversation with AI',
+      });
+      
+      console.log('✅ Default website config created');
+    }
+
+    // Check if we need to seed default conversation style
+    const existingConversationStyle = await getDB().select().from(schema.conversationStyle).limit(1);
+    
+    if (existingConversationStyle.length === 0) {
+      await getDB().insert(schema.conversationStyle).values({
+        id: 'default',
+        basePersona: 'default',
+        gender: 'female',
+        customPerson: '',
+        enhancedPrompt: 'You are a knowledgeable nutrition educator providing clear, evidence-based information. Write with a feminine voice and perspective.',
+      });
+      
+      console.log('✅ Default conversation style created');
+    }
+
+    // Check if we need to seed default service summary
+    const existingServiceSummary = await getDB().select().from(schema.serviceSummary).limit(1);
+    
+    if (existingServiceSummary.length === 0) {
+      await getDB().insert(schema.serviceSummary).values({
+        id: 'default',
+        serviceDescription: `We provide comprehensive nutrition education and counseling services designed to help individuals achieve their health and wellness goals. Our AI-powered platform combines evidence-based nutrition science with personalized guidance to create effective, sustainable dietary changes.
+
+Our services include:
+- Personalized nutrition assessments and planning
+- Interactive educational modules covering key nutrition topics
+- One-on-one AI consultations for specific dietary questions
+- Evidence-based meal planning and recipe recommendations
+- Ongoing support and progress tracking
+
+Whether you're looking to lose weight, manage a health condition, improve athletic performance, or simply eat healthier, our comprehensive approach ensures you receive the knowledge and tools needed for long-term success.
+
+Our certified nutrition professionals have developed this platform to make quality nutrition guidance accessible, affordable, and convenient for everyone.`,
+        keyBenefits: `Evidence-based nutrition guidance
+Personalized meal planning and recommendations
+Interactive learning modules with expert instruction
+24/7 AI support for nutrition questions
+Progress tracking and goal setting tools
+Affordable alternative to traditional nutrition counseling`,
+      });
+      
+      console.log('✅ Default service summary created');
     }
     
   } catch (error) {

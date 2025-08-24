@@ -67,7 +67,8 @@ export class OpeningMessageService {
   async setGeneralOpeningMessage(
     messageContent: string, 
     voiceSettings?: VoiceSettings, 
-    generateAudio: boolean = true
+    generateAudio: boolean = true,
+    isGenerated: boolean = false
   ): Promise<OpeningMessageWithAudio> {
     // First, deactivate existing general opening messages
     await getDB().update(schema.openingMessages)
@@ -82,7 +83,10 @@ export class OpeningMessageService {
       type: 'general_opening',
       messageContent,
       voiceSettings: voiceSettings ? JSON.stringify(voiceSettings) : null,
-      active: true
+      active: true,
+      isGenerated,
+      originalGeneratedContent: isGenerated ? messageContent : null,
+      generatedAt: isGenerated ? new Date().toISOString() : null
     };
 
     await getDB().insert(schema.openingMessages).values(newMessage);
@@ -118,7 +122,8 @@ export class OpeningMessageService {
     lessonId: string, 
     messageContent: string, 
     voiceSettings?: VoiceSettings,
-    generateAudio: boolean = true
+    generateAudio: boolean = true,
+    isGenerated: boolean = false
   ): Promise<OpeningMessageWithAudio> {
     // First, deactivate existing lesson intro messages for this lesson
     await getDB().update(schema.openingMessages)
@@ -139,7 +144,10 @@ export class OpeningMessageService {
       lessonId,
       messageContent,
       voiceSettings: voiceSettings ? JSON.stringify(voiceSettings) : null,
-      active: true
+      active: true,
+      isGenerated,
+      originalGeneratedContent: isGenerated ? messageContent : null,
+      generatedAt: isGenerated ? new Date().toISOString() : null
     };
 
     await getDB().insert(schema.openingMessages).values(newMessage);
@@ -229,9 +237,11 @@ export class OpeningMessageService {
 
   // Update opening message content only
   async updateMessageContent(messageId: string, messageContent: string): Promise<void> {
+    // When manually updating content, mark as no longer purely generated
     await getDB().update(schema.openingMessages)
       .set({ 
         messageContent,
+        isGenerated: false, // Mark as manually edited
         updatedAt: new Date().toISOString()
       })
       .where(eq(schema.openingMessages.id, messageId));
@@ -330,6 +340,215 @@ export class OpeningMessageService {
       msg.messageContent,
       voiceSettings
     );
+  }
+
+  // Generate AI content and update existing message
+  async generateAndUpdateMessage(
+    messageId: string, 
+    generatedContent: string
+  ): Promise<OpeningMessageWithAudio> {
+    // Update the message with generated content
+    await getDB().update(schema.openingMessages)
+      .set({
+        messageContent: generatedContent,
+        isGenerated: true,
+        originalGeneratedContent: generatedContent,
+        generatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(schema.openingMessages.id, messageId));
+
+    // Get the updated message
+    const updated = await getDB().select()
+      .from(schema.openingMessages)
+      .where(eq(schema.openingMessages.id, messageId))
+      .limit(1);
+
+    if (updated.length === 0) {
+      throw new Error('Failed to update message with generated content');
+    }
+
+    return this.enrichWithAudioCache(updated[0]);
+  }
+
+  // Revert message to original generated content
+  async revertToGenerated(messageId: string): Promise<OpeningMessageWithAudio | null> {
+    const message = await getDB().select()
+      .from(schema.openingMessages)
+      .where(eq(schema.openingMessages.id, messageId))
+      .limit(1);
+
+    if (message.length === 0 || !message[0].originalGeneratedContent) {
+      return null;
+    }
+
+    // Revert to original generated content
+    await getDB().update(schema.openingMessages)
+      .set({
+        messageContent: message[0].originalGeneratedContent,
+        isGenerated: true,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(schema.openingMessages.id, messageId));
+
+    // Get the reverted message
+    const reverted = await getDB().select()
+      .from(schema.openingMessages)
+      .where(eq(schema.openingMessages.id, messageId))
+      .limit(1);
+
+    if (reverted.length === 0) {
+      throw new Error('Failed to revert message');
+    }
+
+    return this.enrichWithAudioCache(reverted[0]);
+  }
+
+  // Check if message has original generated content for revert
+  async canRevert(messageId: string): Promise<boolean> {
+    const message = await getDB().select()
+      .from(schema.openingMessages)
+      .where(eq(schema.openingMessages.id, messageId))
+      .limit(1);
+
+    return message.length > 0 && !!message[0].originalGeneratedContent;
+  }
+
+  // Update message content directly (no styling)
+  async updateMessageDirectly(
+    messageId: string, 
+    messageContent: string,
+    voiceSettings?: VoiceSettings,
+    generateAudio: boolean = true
+  ): Promise<OpeningMessageWithAudio> {
+    // Update with direct user input
+    await getDB().update(schema.openingMessages)
+      .set({
+        messageContent,
+        voiceSettings: voiceSettings ? JSON.stringify(voiceSettings) : undefined,
+        isGenerated: false,
+        isStyled: false,
+        originalUserInput: null, // Clear since this is direct input
+        styledAt: null,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(schema.openingMessages.id, messageId));
+
+    // Generate audio if requested
+    if (generateAudio) {
+      try {
+        await audioCacheService.generateAndCacheAudio(
+          messageId,
+          messageContent,
+          voiceSettings
+        );
+      } catch (error) {
+        console.error('[OpeningMessage] Failed to generate audio:', error);
+      }
+    }
+
+    // Get the updated message
+    const updated = await getDB().select()
+      .from(schema.openingMessages)
+      .where(eq(schema.openingMessages.id, messageId))
+      .limit(1);
+
+    if (updated.length === 0) {
+      throw new Error('Failed to update message');
+    }
+
+    return this.enrichWithAudioCache(updated[0]);
+  }
+
+  // Style message content using LLM
+  async styleMessageContent(
+    messageId: string,
+    userInput: string,
+    styledContent: string,
+    voiceSettings?: VoiceSettings,
+    generateAudio: boolean = true
+  ): Promise<OpeningMessageWithAudio> {
+    // Update with styled content, preserving original user input
+    await getDB().update(schema.openingMessages)
+      .set({
+        messageContent: styledContent,
+        voiceSettings: voiceSettings ? JSON.stringify(voiceSettings) : undefined,
+        originalUserInput: userInput,
+        isStyled: true,
+        isGenerated: false, // This is user input, just styled
+        styledAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(schema.openingMessages.id, messageId));
+
+    // Generate audio if requested
+    if (generateAudio) {
+      try {
+        await audioCacheService.generateAndCacheAudio(
+          messageId,
+          styledContent,
+          voiceSettings
+        );
+      } catch (error) {
+        console.error('[OpeningMessage] Failed to generate audio:', error);
+      }
+    }
+
+    // Get the updated message
+    const updated = await getDB().select()
+      .from(schema.openingMessages)
+      .where(eq(schema.openingMessages.id, messageId))
+      .limit(1);
+
+    if (updated.length === 0) {
+      throw new Error('Failed to style message');
+    }
+
+    return this.enrichWithAudioCache(updated[0]);
+  }
+
+  // Revert styled message back to original user input
+  async revertToUserInput(messageId: string): Promise<OpeningMessageWithAudio | null> {
+    const message = await getDB().select()
+      .from(schema.openingMessages)
+      .where(eq(schema.openingMessages.id, messageId))
+      .limit(1);
+
+    if (message.length === 0 || !message[0].originalUserInput) {
+      return null;
+    }
+
+    // Revert to original user input
+    await getDB().update(schema.openingMessages)
+      .set({
+        messageContent: message[0].originalUserInput,
+        isStyled: false,
+        styledAt: null,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(schema.openingMessages.id, messageId));
+
+    // Get the reverted message
+    const reverted = await getDB().select()
+      .from(schema.openingMessages)
+      .where(eq(schema.openingMessages.id, messageId))
+      .limit(1);
+
+    if (reverted.length === 0) {
+      throw new Error('Failed to revert message');
+    }
+
+    return this.enrichWithAudioCache(reverted[0]);
+  }
+
+  // Check if message can revert to user input
+  async canRevertToUserInput(messageId: string): Promise<boolean> {
+    const message = await getDB().select()
+      .from(schema.openingMessages)
+      .where(eq(schema.openingMessages.id, messageId))
+      .limit(1);
+
+    return message.length > 0 && !!message[0].originalUserInput;
   }
 }
 

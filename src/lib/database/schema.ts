@@ -12,6 +12,9 @@ export const lessons = sqliteTable('lessons', {
   videoSize: integer('video_size'), // File size in bytes for uploaded videos
   videoSummary: text('video_summary').notNull(), // Context for LLM during Q&A
   startMessage: text('start_message'), // TTS message played before video
+  videoTranscript: text('video_transcript'), // Full transcript extracted from YouTube
+  transcriptExtractedAt: text('transcript_extracted_at'), // When transcript was extracted
+  transcriptLanguage: text('transcript_language').default('en'), // Language of transcript
   orderIndex: integer('order_index').notNull(),
   prerequisites: text('prerequisites'), // JSON array of lesson IDs
   active: integer('active', { mode: 'boolean' }).default(true),
@@ -41,6 +44,17 @@ export const lessonConversations = sqliteTable('lesson_conversations', {
   updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`),
 });
 
+
+// Conversation style settings
+export const conversationStyle = sqliteTable('conversation_style', {
+  id: text('id').primaryKey().default('default'),
+  basePersona: text('base_persona').notNull().default('default'),
+  gender: text('gender').notNull().default('female'),
+  customPerson: text('custom_person').notNull().default(''),
+  enhancedPrompt: text('enhanced_prompt').notNull(),
+  createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`),
+  updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`),
+});
 
 // Administrator settings
 export const adminSettings = sqliteTable('admin_settings', {
@@ -210,6 +224,14 @@ export const openingMessages = sqliteTable('opening_messages', {
   messageContent: text('message_content').notNull(), // The TTS message text
   voiceSettings: text('voice_settings'), // JSON: voice_id, speed, etc.
   active: integer('active', { mode: 'boolean' }).default(true),
+  // Generation tracking fields
+  isGenerated: integer('is_generated', { mode: 'boolean' }).default(false),
+  originalGeneratedContent: text('original_generated_content'), // Store original AI-generated content for revert
+  generatedAt: text('generated_at'), // When content was AI-generated
+  // User input styling tracking fields
+  originalUserInput: text('original_user_input'), // Store original user-typed content before styling
+  isStyled: integer('is_styled', { mode: 'boolean' }).default(false), // Whether content was styled by LLM
+  styledAt: text('styled_at'), // When content was styled
   // Audio cache fields
   audioUrl: text('audio_url'), // URL to cached audio file
   audioBlob: text('audio_blob'), // Base64 encoded audio data
@@ -234,6 +256,38 @@ export const audioCache = sqliteTable('audio_cache', {
   generatedAt: text('generated_at').default(sql`(CURRENT_TIMESTAMP)`),
   accessedAt: text('accessed_at').default(sql`(CURRENT_TIMESTAMP)`),
   accessCount: integer('access_count').default(0),
+});
+
+// Service Provider information
+export const serviceProvider = sqliteTable('service_provider', {
+  id: text('id').primaryKey().default('default'),
+  businessName: text('business_name').notNull().default(''),
+  address: text('address').notNull().default(''),
+  phoneNumber: text('phone_number').notNull().default(''),
+  email: text('email').default(''),
+  website: text('website').default(''),
+  createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`),
+  updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`),
+});
+
+// Website Configuration for terminology and branding
+export const websiteConfig = sqliteTable('website_config', {
+  id: text('id').primaryKey().default('default'),
+  lessonsName: text('lessons_name').notNull().default('Lessons'),
+  lessonsDescription: text('lessons_description').notNull().default('Educational video content'),
+  conversationName: text('conversation_name').notNull().default('Chat'),
+  conversationDescription: text('conversation_description').notNull().default('Open conversation with AI'),
+  createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`),
+  updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`),
+});
+
+// Service Summary for describing what the service offers
+export const serviceSummary = sqliteTable('service_summary', {
+  id: text('id').primaryKey().default('default'),
+  serviceDescription: text('service_description').notNull().default(''),
+  keyBenefits: text('key_benefits').notNull().default(''),
+  createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`),
+  updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`),
 });
 
 // Export types for TypeScript
@@ -285,3 +339,12 @@ export type NewAudioCache = typeof audioCache.$inferInsert;
 
 export type SessionEvent = typeof sessionEvents.$inferSelect;
 export type NewSessionEvent = typeof sessionEvents.$inferInsert;
+
+export type ServiceProvider = typeof serviceProvider.$inferSelect;
+export type NewServiceProvider = typeof serviceProvider.$inferInsert;
+
+export type WebsiteConfig = typeof websiteConfig.$inferSelect;
+export type NewWebsiteConfig = typeof websiteConfig.$inferInsert;
+
+export type ServiceSummary = typeof serviceSummary.$inferSelect;
+export type NewServiceSummary = typeof serviceSummary.$inferInsert;

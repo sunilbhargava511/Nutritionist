@@ -1,6 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminService } from '@/lib/admin-service';
 import { getClaudeService } from '@/lib/claude-enhanced';
+import { getDB } from '@/lib/database';
+import { conversationStyle } from '@/lib/database/schema';
+import { eq } from 'drizzle-orm';
+import { lessonService } from '@/lib/lesson-service';
+
+// Helper function to get current persona settings from database
+async function getPersonaSettings() {
+  try {
+    const settings = await getDB()
+      .select()
+      .from(conversationStyle)
+      .where(eq(conversationStyle.id, 'default'))
+      .limit(1);
+
+    if (settings.length === 0) {
+      // Return default settings if none exist
+      return {
+        basePersona: 'default',
+        gender: 'female',
+        customPerson: '',
+        enhancedPrompt: 'You are a knowledgeable nutrition educator providing clear, evidence-based information.'
+      };
+    }
+
+    return {
+      basePersona: settings[0].basePersona,
+      gender: settings[0].gender,
+      customPerson: settings[0].customPerson,
+      enhancedPrompt: settings[0].enhancedPrompt
+    };
+  } catch (error) {
+    console.error('Error loading conversation style from database:', error);
+    // Return default on error
+    return {
+      basePersona: 'default',
+      gender: 'female',
+      customPerson: '',
+      enhancedPrompt: 'You are a knowledgeable nutrition educator providing clear, evidence-based information.'
+    };
+  }
+}
 
 // Helper function to convert numbers to ordinals (1st, 2nd, 3rd, etc.)
 function getOrdinalNumber(num: number): string {
@@ -15,22 +56,45 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { lessonId, lessonTitle, orderIndex } = body || {};
     
+    // Get persona settings from database
+    const personaSettings = await getPersonaSettings();
+    
     console.log('Starting general conversation with ElevenLabs...', {
       hasLessonContext: !!lessonId,
       lessonId,
       lessonTitle,
-      orderIndex
+      orderIndex,
+      personaSettings: personaSettings
     });
     
     // 1. Get the general Q&A prompt from database
     const prompts = await adminService.getAllSystemPrompts();
-    const generalQAPrompt = prompts.find(p => p.type === 'qa' && !p.lessonId);
+    let qaPrompt = null;
+    let lessonTranscript = null;
     
-    if (!generalQAPrompt) {
+    // If this is a lesson Q&A, try to get the lesson-specific prompt and transcript
+    if (lessonId) {
+      // Get lesson-specific Q&A prompt if it exists
+      qaPrompt = prompts.find(p => p.type === 'lesson_qa' && p.lessonId === lessonId);
+      
+      // Get the lesson to retrieve its transcript
+      const lesson = await lessonService.getLesson(lessonId);
+      if (lesson?.videoTranscript) {
+        lessonTranscript = lesson.videoTranscript;
+        console.log('Found lesson transcript, length:', lessonTranscript.length);
+      }
+    }
+    
+    // Fall back to general Q&A prompt if no lesson-specific prompt
+    if (!qaPrompt) {
+      qaPrompt = prompts.find(p => p.type === 'qa' && !p.lessonId);
+    }
+    
+    if (!qaPrompt) {
       return NextResponse.json(
         { 
-          error: 'General Q&A prompt not found',
-          details: 'Please configure a general Q&A prompt in the admin panel' 
+          error: 'Q&A prompt not found',
+          details: 'Please configure a Q&A prompt in the admin panel' 
         },
         { status: 500 }
       );
@@ -45,24 +109,42 @@ export async function POST(request: NextRequest) {
     
     // Build context-aware intro prompt
     let conversationContext = '';
+    let transcriptContext = '';
+    
     if (lessonId && lessonTitle && orderIndex !== undefined) {
       conversationContext = `This is a Q&A session after completing "${lessonTitle}" which is the ${getOrdinalNumber(orderIndex + 1)} lesson.`;
+      
+      // Include transcript in context if available
+      if (lessonTranscript) {
+        transcriptContext = `
+
+LESSON TRANSCRIPT FOR REFERENCE:
+The following is the full transcript of the lesson the user just completed. Use this information to answer questions about the lesson content accurately:
+
+${lessonTranscript}
+
+END OF TRANSCRIPT`;
+      }
     } else {
-      conversationContext = 'This is the start of a general financial counseling conversation.';
+      conversationContext = 'This is the start of a general nutrition education conversation.';
     }
     
-    const introPrompt = `${generalQAPrompt.content}
+    // Use the stored enhanced prompt which already includes gender and custom person
+    const introPrompt = `${personaSettings.enhancedPrompt}
 
-${conversationContext} Generate a warm, welcoming introduction message that:
-- Introduces you as Sanjay, an AI financial advisor
+${conversationContext}${transcriptContext}
+
+Generate a warm, welcoming introduction message that:
+- Introduces you as a nutrition educator/advisor  
 - Creates a comfortable, safe space for discussion
 ${lessonId 
   ? `- Acknowledges they just completed the lesson and invites questions about it
-- Also welcomes any other financial topics they'd like to discuss` 
-  : '- Invites the user to share what\'s on their mind financially'
+- Also welcomes any other nutrition topics they'd like to discuss` 
+  : '- Invites the user to share what\'s on their mind about nutrition and health'
 }
 - Keep it under 100 words
 - Write for voice synthesis (avoid symbols, spell out numbers)
+- Use the personality and style specified in your persona
 
 Generate just the introduction message, nothing else.`;
 
@@ -120,14 +202,16 @@ Generate just the introduction message, nothing else.`;
         signedUrl: conversationData.signedUrl,
         conversationId: conversationData.conversationId,
         expiresAt: conversationData.expiresAt,
-        promptId: generalQAPrompt.id, // Store for webhook use
+        promptId: qaPrompt.id, // Store for webhook use
         type: lessonId ? 'lesson_qa' : 'general_qa',
         // Include lesson context for webhook
         lessonContext: lessonId ? {
           lessonId,
           lessonTitle,
           orderIndex,
-          conversationState: `Q&A after completing "${lessonTitle}" (${getOrdinalNumber(orderIndex + 1)} lesson)`
+          conversationState: `Q&A after completing "${lessonTitle}" (${getOrdinalNumber(orderIndex + 1)} lesson)`,
+          hasTranscript: !!lessonTranscript,
+          transcriptLength: lessonTranscript?.length || 0
         } : null
       },
       firstMessage: firstMessage.trim(),
