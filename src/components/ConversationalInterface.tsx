@@ -57,6 +57,10 @@ export default function ConversationalInterface() {
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [isVideoCompleted, setIsVideoCompleted] = useState(false);
 
+  // Customization state
+  const [serviceProvider, setServiceProvider] = useState<any>(null);
+  const [websiteConfig, setWebsiteConfig] = useState<any>(null);
+
   // Initialize lesson-based session on component mount
   useEffect(() => {
     const initializeLessonSession = async () => {
@@ -98,6 +102,53 @@ export default function ConversationalInterface() {
 
     initializeLessonSession();
   }, []);
+
+  // Load customization data
+  useEffect(() => {
+    const loadCustomizationData = async () => {
+      try {
+        // Load service provider data
+        const providerResponse = await fetch('/api/admin/service-provider');
+        if (providerResponse.ok) {
+          const providerData = await providerResponse.json();
+          if (providerData.success && providerData.provider) {
+            setServiceProvider(providerData.provider);
+          }
+        }
+
+        // Load website config data
+        const configResponse = await fetch('/api/admin/website-config');
+        if (configResponse.ok) {
+          const configData = await configResponse.json();
+          if (configData.success && configData.config) {
+            setWebsiteConfig(configData.config);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load customization data:', error);
+      }
+    };
+
+    loadCustomizationData();
+  }, []);
+
+  // Helper functions for customization
+  const getProviderName = () => {
+    if (!serviceProvider?.businessName) return 'your nutritionist';
+    
+    // Remove common business suffixes and titles
+    let name = serviceProvider.businessName
+      .replace(/,?\s*(LLC|Inc|Corp|Ltd|RD|MD|PhD|LCSW|LPC|LMFT|CPA|JD)\.?$/gi, '')
+      .replace(/,?\s*(Registered Dietitian|Licensed Clinical Social Worker|Licensed Professional Counselor)$/gi, '')
+      .replace(/^(Dr\.?|Doctor|Professor|Prof\.?)\s+/gi, '')
+      .trim();
+    
+    return name.split(',')[0].trim() || 'your nutritionist';
+  };
+
+  const getLearningType = () => {
+    return websiteConfig?.lessonsName || 'Nutrition Learning';
+  };
 
   // Load session progress and determine next steps
   const loadSessionProgress = async (sessionId: string) => {
@@ -503,10 +554,10 @@ export default function ConversationalInterface() {
             <div className="bg-white/80 backdrop-blur-sm p-4 border-b border-gray-200">
               <div className="text-center">
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Welcome to Financial Learning with Sanjay
+                  Welcome to {getLearningType()} with {getProviderName()}
                 </h2>
                 <p className="text-sm text-gray-600">
-                  Start a conversation to get personalized lesson recommendations
+                  Start a conversation to get personalized nutrition recommendations
                 </p>
               </div>
             </div>

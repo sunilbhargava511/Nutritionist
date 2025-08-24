@@ -54,12 +54,17 @@ export default function UnifiedSessionInterface({ onBack }: UnifiedSessionInterf
   const [lessonIntroMessage, setLessonIntroMessage] = useState<string | null>(null);
   const [debugLog, setDebugLog] = useState<string[]>([]);
   
+  // Customization state
+  const [serviceProvider, setServiceProvider] = useState<any>(null);
+  const [websiteConfig, setWebsiteConfig] = useState<any>(null);
+  
   // Video player ref for TTS coordination
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
 
   // Load lessons on component mount
   useEffect(() => {
     loadLessons();
+    loadCustomizationData();
   }, []);
 
   const loadLessons = async () => {
@@ -72,6 +77,52 @@ export default function UnifiedSessionInterface({ onBack }: UnifiedSessionInterf
     } catch (error) {
       console.error('Failed to load lessons:', error);
     }
+  };
+
+  const loadCustomizationData = async () => {
+    try {
+      // Load service provider data
+      const providerResponse = await fetch('/api/admin/service-provider');
+      if (providerResponse.ok) {
+        const providerData = await providerResponse.json();
+        if (providerData.success && providerData.provider) {
+          setServiceProvider(providerData.provider);
+        }
+      }
+
+      // Load website config data
+      const configResponse = await fetch('/api/admin/website-config');
+      if (configResponse.ok) {
+        const configData = await configResponse.json();
+        if (configData.success && configData.config) {
+          setWebsiteConfig(configData.config);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load customization data:', error);
+    }
+  };
+
+  // Helper functions for customization
+  const getProviderName = () => {
+    if (!serviceProvider?.businessName) return 'your nutritionist';
+    
+    // Remove common business suffixes and titles
+    let name = serviceProvider.businessName
+      .replace(/,?\s*(LLC|Inc|Corp|Ltd|RD|MD|PhD|LCSW|LPC|LMFT|CPA|JD)\.?$/gi, '')
+      .replace(/,?\s*(Registered Dietitian|Licensed Clinical Social Worker|Licensed Professional Counselor)$/gi, '')
+      .replace(/^(Dr\.?|Doctor|Professor|Prof\.?)\s+/gi, '')
+      .trim();
+    
+    return name.split(',')[0].trim() || 'your nutritionist';
+  };
+
+  const getBusinessName = () => {
+    return serviceProvider?.businessName || 'NutritionAssist';
+  };
+
+  const getLearningType = () => {
+    return websiteConfig?.lessonsName || 'Nutrition Learning';
   };
 
   // Start open-ended session
@@ -313,7 +364,7 @@ export default function UnifiedSessionInterface({ onBack }: UnifiedSessionInterf
               <div className="text-center mb-8">
                 <Bot className="w-16 h-16 text-blue-600 mx-auto mb-4" />
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  Welcome to Financial Learning with Sanjay
+                  Welcome to {getLearningType()} with {getProviderName()}
                 </h1>
                 <p className="text-lg text-gray-600">
                   Choose how you'd like to start your session
