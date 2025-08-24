@@ -286,11 +286,58 @@ export default function AdminPanel() {
       
       if (response.ok) {
         console.log('Conversation style saved to database');
+        return true;
       } else {
         console.error('Failed to save conversation style');
+        return false;
       }
     } catch (error) {
       console.error('Error saving conversation style:', error);
+      return false;
+    }
+  };
+
+  // Combined save function for Style & Voice Settings
+  const saveStyleAndVoiceSettings = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Get voice settings from the form inputs
+      const form = (event.target as HTMLElement).closest('div');
+      const voiceIdInput = form?.querySelector('input[name="voiceId"]') as HTMLInputElement;
+      const voiceDescInput = form?.querySelector('textarea[name="voiceDescription"]') as HTMLTextAreaElement;
+      
+      // Save conversation style first
+      const styleSuccess = await saveConversationStyle(contentPersona, personaGender, customPerson);
+      
+      // Save voice settings
+      const voiceUpdates = {
+        voiceId: voiceIdInput?.value || '',
+        voiceDescription: voiceDescInput?.value || '',
+      };
+      
+      const response = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(voiceUpdates),
+      });
+      
+      const voiceSuccess = response.ok;
+      
+      if (styleSuccess && voiceSuccess) {
+        await loadData();
+        showSuccess('Style and voice settings saved successfully!');
+      } else {
+        throw new Error('Some settings failed to save');
+      }
+      
+    } catch (error) {
+      console.error('Error saving style and voice settings:', error);
+      setError('Failed to save style and voice settings');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -604,7 +651,7 @@ export default function AdminPanel() {
       if (response.ok) {
         const data = await response.json();
         setServiceProvider(data.provider);
-        setError(null);
+        showSuccess('Service provider information saved successfully');
       } else {
         setError('Failed to save service provider information');
       }
@@ -2469,9 +2516,11 @@ Affordable alternative to traditional nutrition counseling"
                 
                 <button
                   type="button"
-                  className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium"
+                  onClick={saveStyleAndVoiceSettings}
+                  disabled={isLoading}
+                  className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Save Style & Voice Settings
+                  {isLoading ? 'Saving...' : 'Save Style & Voice Settings'}
                 </button>
               </div>
             </div>
