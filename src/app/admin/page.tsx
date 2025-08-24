@@ -11,6 +11,7 @@ import {
   Plus,
   Eye,
   AlertCircle,
+  CheckCircle,
   GripVertical,
   Edit3,
   Download,
@@ -73,9 +74,17 @@ export default function AdminPanel() {
   const [syncingTranscripts, setSyncingTranscripts] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Get voice settings from centralized config
   const { voiceSettings } = useElevenLabsVoiceSettings();
+  
+  // Helper function to show success messages with auto-dismiss
+  const showSuccess = (message: string) => {
+    setSuccessMessage(message);
+    setError(null);
+    setTimeout(() => setSuccessMessage(null), 4000); // Auto-dismiss after 4 seconds
+  };
   
   // Service content styling state
   const [stylingServiceContent, setStylingServiceContent] = useState<{
@@ -431,7 +440,7 @@ export default function AdminPanel() {
       if (response.ok) {
         const data = await response.json();
         setServiceSummary(data.summary);
-        setError(null);
+        showSuccess('Service summary saved successfully');
       } else {
         setError('Failed to save service summary');
       }
@@ -460,6 +469,7 @@ export default function AdminPanel() {
       if (response.ok) {
         const analysis = await response.json();
         setWebsiteAnalysis(analysis);
+        showSuccess('Website analyzed successfully! Information extracted and populated below.');
         
         // Auto-populate service summary if analysis was successful
         if (analysis.serviceDescription && analysis.keyBenefits) {
@@ -1909,6 +1919,20 @@ The lesson context will be automatically added to this prompt when used.`;
             <button 
               onClick={() => setError(null)}
               className="ml-auto text-red-600 hover:text-red-800"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Success Alert */}
+        {successMessage && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+            <span className="text-green-800">{successMessage}</span>
+            <button 
+              onClick={() => setSuccessMessage(null)}
+              className="ml-auto text-green-600 hover:text-green-800"
             >
               ×
             </button>
@@ -4333,7 +4357,7 @@ Affordable alternative to traditional nutrition counseling"
                         });
                         const result = await response.json();
                         if (result.success) {
-                          setError(null);
+                          showSuccess(`Successfully regenerated ${result.stats?.succeeded || 0} audio files`);
                           // Refresh audio cache data
                           await loadAudioData();
                         } else {
@@ -4359,7 +4383,7 @@ Affordable alternative to traditional nutrition counseling"
                           });
                           const result = await response.json();
                           if (result.success) {
-                            setError(null);
+                            showSuccess(`Successfully cleared ${result.clearedEntries || 0} old cache entries`);
                             await loadAudioData();
                           } else {
                             setError(result.error);
@@ -4376,7 +4400,14 @@ Affordable alternative to traditional nutrition counseling"
                   </button>
 
                   <button
-                    onClick={loadAudioData}
+                    onClick={async () => {
+                      try {
+                        await loadAudioData();
+                        showSuccess('Audio data refreshed successfully');
+                      } catch (err) {
+                        setError('Failed to refresh audio data');
+                      }
+                    }}
                     className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
                   >
                     <RefreshCw className="w-4 h-4" />
@@ -4437,7 +4468,7 @@ Affordable alternative to traditional nutrition counseling"
                                   });
                                   const result = await response.json();
                                   if (result.success) {
-                                    setError(null);
+                                    showSuccess('Audio regenerated successfully');
                                     await loadAudioData();
                                   } else {
                                     setError(result.error);
