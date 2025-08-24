@@ -2,6 +2,7 @@ import { getDB } from './database';
 import * as schema from './database/schema';
 import { eq, sql } from 'drizzle-orm';
 import crypto from 'crypto';
+import { voiceConfigService } from './voice-config-service';
 
 export interface AudioGenerationOptions {
   voiceId?: string;
@@ -20,7 +21,6 @@ export interface CachedAudio {
 
 export class AudioCacheService {
   private readonly ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY || '';
-  private readonly DEFAULT_VOICE_ID = 'MXGyTMlsvQgQ4BL0emIa';
   
   /**
    * Generate hash for content + voice settings to detect changes
@@ -63,7 +63,8 @@ export class AudioCacheService {
       throw new Error('ElevenLabs API key is not configured');
     }
 
-    const voiceId = options?.voiceId || this.DEFAULT_VOICE_ID;
+    // Get voice ID from centralized config if not provided
+    const voiceId = options?.voiceId || await voiceConfigService.getVoiceId();
     const voiceSettings = {
       stability: options?.stability ?? 0.6,
       similarity_boost: options?.similarityBoost ?? 0.8,
@@ -150,7 +151,7 @@ export class AudioCacheService {
       mimeType: 'audio/mpeg',
       sizeBytes: Math.floor(audioData.length * 0.75), // Approximate size from base64
       durationSeconds: duration,
-      voiceId: voiceSettings?.voiceId || this.DEFAULT_VOICE_ID,
+      voiceId: voiceSettings?.voiceId || await voiceConfigService.getVoiceId(),
       voiceSettings: JSON.stringify(voiceSettings),
       generatedAt: now,
       accessedAt: now,

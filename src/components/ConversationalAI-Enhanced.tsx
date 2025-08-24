@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, AlertCircle } from 'lucide-react';
 import { useConversation } from '@elevenlabs/react';
+import { useVoiceId } from '@/hooks/useVoiceConfig';
 
 interface ConversationalAIProps {
   sessionId: string;
@@ -41,6 +42,9 @@ export default function ConversationalAI({
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [hasAutoStarted, setHasAutoStarted] = useState(false);
+  
+  // Get voice ID from centralized config
+  const { voiceId } = useVoiceId();
   
   // Refs for conversation management
   const streamRef = useRef<MediaStream | null>(null);
@@ -209,7 +213,7 @@ export default function ConversationalAI({
             interruptible: true
           },
           tts: {
-            voiceId: 'MXGyTMlsvQgQ4BL0emIa',
+            voiceId: voiceId || 'pNInz6obpgDQGcFmaJgB',
             stability: 0.6,
             similarity_boost: 0.8,
             style: 0.4,

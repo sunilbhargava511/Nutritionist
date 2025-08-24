@@ -1,6 +1,7 @@
 import { getDB } from './database';
 import * as schema from './database/schema';
 import { eq, and } from 'drizzle-orm';
+import { voiceConfigService } from './voice-config-service';
 
 export interface VoiceSettings {
   voiceId: string;
@@ -231,7 +232,7 @@ export class OpeningMessageService {
     if (!existingGeneral) {
       await this.setGeneralOpeningMessage(
         "Welcome to your personalized nutrition journey! I'm here to guide you through evidence-based nutrition education and answer any questions you might have. Let's begin exploring how to build healthier eating habits together.",
-        this.getDefaultVoiceSettings(),
+        this.getDefaultVoiceSettingsSync(),
         true,
         false
       );
@@ -300,7 +301,7 @@ export class OpeningMessageService {
   private generateAudioHash(content: string, voiceSettings?: VoiceSettings | null): string {
     const data = JSON.stringify({
       content,
-      voiceSettings: voiceSettings || this.getDefaultVoiceSettings()
+      voiceSettings: voiceSettings || this.getDefaultVoiceSettingsSync()
     });
     
     // Simple hash function (in production, use crypto.createHash)
@@ -313,15 +314,42 @@ export class OpeningMessageService {
     return hash.toString(36);
   }
 
-  // Get default voice settings
-  getDefaultVoiceSettings(): VoiceSettings {
+  // Get default voice settings from centralized config
+  async getDefaultVoiceSettings(): Promise<VoiceSettings> {
+    try {
+      const voiceConfig = await voiceConfigService.getVoiceConfig();
+      return {
+        voiceId: voiceConfig.voiceId,
+        speed: 1.0,
+        stability: voiceConfig.stability || 0.5,
+        similarityBoost: voiceConfig.similarityBoost || 0.75,
+        style: voiceConfig.style || 0.3,
+        useSpeakerBoost: voiceConfig.useSpeakerBoost !== false,
+      };
+    } catch (error) {
+      console.warn('Failed to get voice config, using fallback:', error);
+      // Fallback to default settings
+      return {
+        voiceId: 'pNInz6obpgDQGcFmaJgB',
+        speed: 1.0,
+        stability: 0.5,
+        similarityBoost: 0.75,
+        style: 0.3,
+        useSpeakerBoost: true,
+      };
+    }
+  }
+
+  // Synchronous fallback for compatibility
+  getDefaultVoiceSettingsSync(): VoiceSettings {
+    const voiceConfig = voiceConfigService.getVoiceConfigSync();
     return {
-      voiceId: 'pNInz6obpgDQGcFmaJgB', // Adam voice
+      voiceId: voiceConfig.voiceId,
       speed: 1.0,
-      stability: 0.5,
-      similarityBoost: 0.75,
-      style: 0.3,
-      useSpeakerBoost: true,
+      stability: voiceConfig.stability || 0.5,
+      similarityBoost: voiceConfig.similarityBoost || 0.75,
+      style: voiceConfig.style || 0.3,
+      useSpeakerBoost: voiceConfig.useSpeakerBoost !== false,
     };
   }
 

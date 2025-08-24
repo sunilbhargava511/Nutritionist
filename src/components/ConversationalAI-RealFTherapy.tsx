@@ -5,6 +5,7 @@ import { Phone, PhoneOff, Mic, MicOff, AlertCircle } from 'lucide-react';
 import { EnhancedSessionStorage } from '@/lib/session-enhanced';
 import { useConversation } from '@elevenlabs/react';
 import { Session, Message } from '@/types';
+import { useVoiceId } from '@/hooks/useVoiceConfig';
 
 interface ConversationalAIProps {
   onMessage?: (message: { role: 'user' | 'assistant'; content: string; timestamp: Date }) => void;
@@ -35,6 +36,9 @@ export default function ConversationalAI({
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [hasAutoStarted, setHasAutoStarted] = useState(false);
+  
+  // Get voice ID from centralized config
+  const { voiceId } = useVoiceId();
   
   // Refs for conversation management
   const streamRef = useRef<MediaStream | null>(null);
@@ -325,7 +329,7 @@ export default function ConversationalAI({
             interruptible: false
           },
           tts: {
-            voiceId: 'MXGyTMlsvQgQ4BL0emIa',
+            voiceId: voiceId || 'pNInz6obpgDQGcFmaJgB',
             stability: 0.6,
             similarity_boost: 0.8,
             style: 0.4,

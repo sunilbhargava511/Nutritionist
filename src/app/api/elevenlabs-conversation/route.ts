@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { voiceConfigService } from '@/lib/voice-config-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
             first_message: firstMessage // Override with Anthropic-generated message
           },
           tts: {
-            voice_id: voiceId || 'MXGyTMlsvQgQ4BL0emIa',
+            voice_id: voiceId || await voiceConfigService.getVoiceId(),
             stability: voiceSettings?.stability || 0.6,
             similarity_boost: voiceSettings?.similarity_boost || 0.8,
             style: voiceSettings?.style || 0.4,
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
       createdAt: data.created_at,
       overrides: {
         firstMessage,
-        voiceId: voiceId || 'MXGyTMlsvQgQ4BL0emIa',
+        voiceId: voiceId || await voiceConfigService.getVoiceId(),
         voiceSettings: {
           stability: voiceSettings?.stability || 0.6,
           similarity_boost: voiceSettings?.similarity_boost || 0.8,
@@ -136,7 +137,7 @@ export async function GET() {
       method: 'FTherapy Pattern Implementation',
       parameters: {
         firstMessage: 'required - Anthropic-generated welcome message',
-        voiceId: 'optional - ElevenLabs voice ID (default: MXGyTMlsvQgQ4BL0emIa)',
+        voiceId: 'optional - ElevenLabs voice ID (default: admin configured voice)',
         voiceSettings: {
           stability: '0.0-1.0 (default: 0.6)',
           similarity_boost: '0.0-1.0 (default: 0.8)', 

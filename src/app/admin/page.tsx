@@ -37,6 +37,7 @@ import {
   SessionReport 
 } from '@/types';
 import AppHeader from '@/components/AppHeader';
+import { useElevenLabsVoiceSettings } from '@/hooks/useVoiceConfig';
 
 type AdminTab = 'overview' | 'lessons' | 'personas' | 'settings' | 'prompts' | 'knowledge' | 'reports' | 'opening-messages' | 'audio-management' | 'debug';
 type SettingsTab = 'general' | 'ui';
@@ -72,6 +73,9 @@ export default function AdminPanel() {
   const [syncingTranscripts, setSyncingTranscripts] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Get voice settings from centralized config
+  const { voiceSettings } = useElevenLabsVoiceSettings();
   
   // Service content styling state
   const [stylingServiceContent, setStylingServiceContent] = useState<{
@@ -3810,8 +3814,13 @@ Affordable alternative to traditional nutrition counseling"
                           body: JSON.stringify({
                             action: 'set_general',
                             messageContent,
-                            voiceSettings: {
-                              voiceId: 'MXGyTMlsvQgQ4BL0emIa',
+                            voiceSettings: voiceSettings ? {
+                              voiceId: voiceSettings.voiceId,
+                              speed: 0.85,
+                              stability: voiceSettings.stability,
+                              similarityBoost: voiceSettings.similarity_boost
+                            } : {
+                              voiceId: 'pNInz6obpgDQGcFmaJgB',
                               speed: 0.85,
                               stability: 0.6,
                               similarityBoost: 0.8
@@ -3895,8 +3904,13 @@ Affordable alternative to traditional nutrition counseling"
                                       action: 'set_lesson',
                                       lessonId: lesson.id,
                                       messageContent,
-                                      voiceSettings: {
-                                        voiceId: 'MXGyTMlsvQgQ4BL0emIa',
+                                      voiceSettings: voiceSettings ? {
+                                        voiceId: voiceSettings.voiceId,
+                                        speed: 0.85,
+                                        stability: voiceSettings.stability,
+                                        similarityBoost: voiceSettings.similarity_boost
+                                      } : {
+                                        voiceId: 'pNInz6obpgDQGcFmaJgB',
                                         speed: 0.85,
                                         stability: 0.6,
                                         similarityBoost: 0.8
@@ -3946,8 +3960,13 @@ Affordable alternative to traditional nutrition counseling"
                                     action: 'set_lesson',
                                     lessonId: lesson.id,
                                     messageContent,
-                                    voiceSettings: {
-                                      voiceId: 'MXGyTMlsvQgQ4BL0emIa',
+                                    voiceSettings: voiceSettings ? {
+                                      voiceId: voiceSettings.voiceId,
+                                      speed: 0.85,
+                                      stability: voiceSettings.stability,
+                                      similarityBoost: voiceSettings.similarity_boost
+                                    } : {
+                                      voiceId: 'pNInz6obpgDQGcFmaJgB',
                                       speed: 0.85,
                                       stability: 0.6,
                                       similarityBoost: 0.8
@@ -3998,7 +4017,7 @@ Affordable alternative to traditional nutrition counseling"
               <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                 <h4 className="font-medium text-gray-900 mb-2">Voice Settings</h4>
                 <div className="text-sm text-gray-600 space-y-1">
-                  <p><strong>Voice:</strong> Professional Male (MXGyTMlsvQgQ4BL0emIa)</p>
+                  <p><strong>Voice:</strong> {voiceSettings ? `Admin Configured (${voiceSettings.voiceId})` : 'Default Professional Voice'}</p>
                   <p><strong>Speed:</strong> 0.85x (slightly slower for clarity)</p>
                   <p><strong>Stability:</strong> 0.6 (balanced)</p>
                   <p><strong>Similarity Boost:</strong> 0.8 (high voice consistency)</p>

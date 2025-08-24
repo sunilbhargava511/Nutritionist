@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { voiceConfigService } from '@/lib/voice-config-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,15 +20,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Default voice settings
-    const defaultVoiceSettings = {
-      voiceId: 'MXGyTMlsvQgQ4BL0emIa', // Default voice
-      stability: 0.6,
-      similarity_boost: 0.8,
-      style: 0.4,
-      use_speaker_boost: true
-    };
-
+    // Get voice settings from centralized config
+    const defaultVoiceSettings = await voiceConfigService.getElevenLabsVoiceSettings();
     const finalVoiceSettings = { ...defaultVoiceSettings, ...voiceSettings };
 
     // Generate TTS using ElevenLabs API

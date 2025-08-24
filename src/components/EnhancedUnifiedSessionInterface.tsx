@@ -37,6 +37,7 @@ import ConversationalAI from './ConversationalAI-Enhanced';
 import AppHeader from './AppHeader';
 import AudioPlayer from './AudioPlayer';
 import { Lesson } from '@/types';
+import { useElevenLabsVoiceSettings } from '@/hooks/useVoiceConfig';
 
 interface SessionData {
   id: string;
@@ -60,6 +61,9 @@ export default function EnhancedUnifiedSessionInterface() {
   const [isInitializing, setIsInitializing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isVideoCompleted, setIsVideoCompleted] = useState(false);
+  
+  // Get voice settings from centralized config
+  const { voiceSettings } = useElevenLabsVoiceSettings();
   
   // Lesson intro TTS state
   const [lessonPhase, setLessonPhase] = useState<'intro' | 'video' | 'qa'>('intro');
@@ -463,13 +467,7 @@ export default function EnhancedUnifiedSessionInterface() {
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                               text: 'Hello! This is a test of ElevenLabs text to speech. Can you hear me?',
-                              voiceSettings: {
-                                voiceId: 'MXGyTMlsvQgQ4BL0emIa',
-                                stability: 0.6,
-                                similarity_boost: 0.8,
-                                style: 0.4,
-                                use_speaker_boost: true
-                              }
+                              voiceSettings
                             })
                           });
                           

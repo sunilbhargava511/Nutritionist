@@ -5,6 +5,7 @@ import { getDB } from '@/lib/database';
 import { conversationStyle } from '@/lib/database/schema';
 import { eq } from 'drizzle-orm';
 import { lessonService } from '@/lib/lesson-service';
+import { voiceConfigService } from '@/lib/voice-config-service';
 
 // Helper function to get current persona settings from database
 async function getPersonaSettings() {
@@ -100,9 +101,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Get voice settings from admin
-    const settings = await adminService.getAdminSettings();
-    const voiceId = settings?.voiceId || 'pNInz6obpgDQGcFmaJgB';
+    // 2. Get voice settings from centralized config
+    const voiceId = await voiceConfigService.getVoiceId();
     
     // 3. Pass the prompt to Claude to generate the first message
     const claudeService = getClaudeService();

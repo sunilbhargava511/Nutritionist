@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { useElevenLabsVoiceSettings } from '@/hooks/useVoiceConfig';
 
 interface TTSPlayerProps {
   text: string;
@@ -21,11 +22,15 @@ export default function TTSPlayer({
   className = ''
 }: TTSPlayerProps) {
   
+  // Get voice settings from centralized config
+  const { voiceSettings, isLoading: voiceLoading } = useElevenLabsVoiceSettings();
+  
   // Debug logging - log props on every render
   console.log('[TTSPlayer] Render with props:', {
     textLength: text?.length || 0,
     audioUrl: audioUrl,
-    autoPlay: autoPlay
+    autoPlay: autoPlay,
+    voiceLoading
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,7 +45,7 @@ export default function TTSPlayer({
 
   // Generate ElevenLabs TTS audio
   const generateElevenLabsAudio = async () => {
-    if (!text || isGenerating) return;
+    if (!text || isGenerating || voiceLoading) return;
 
     setIsLoading(true);
     setIsGenerating(true);
@@ -56,13 +61,7 @@ export default function TTSPlayer({
         },
         body: JSON.stringify({
           text,
-          voiceSettings: {
-            voiceId: 'MXGyTMlsvQgQ4BL0emIa',
-            stability: 0.6,
-            similarity_boost: 0.8,
-            style: 0.4,
-            use_speaker_boost: true
-          }
+          voiceSettings // Use centralized voice settings
         }),
       });
 
