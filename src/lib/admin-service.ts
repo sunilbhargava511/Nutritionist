@@ -111,20 +111,89 @@ export class AdminService {
   async uploadKnowledgeBaseFile(
     file: File,
     indexedContent?: string
-  ): Promise<KnowledgeBaseFile> {
+  ): Promise<KnowledgeBaseFile | KnowledgeBaseFile[]> {
     const content = await file.text();
+    const fileType = file.type || 'text/plain';
+    
+    // Handle JSON batch uploads
+    if (fileType === 'application/json') {
+      try {
+        const jsonData = JSON.parse(content);
+        
+        // Check if it's an array of knowledge base entries
+        if (Array.isArray(jsonData)) {
+          const batchFiles: KnowledgeBaseFile[] = [];
+          
+          for (const entry of jsonData) {
+            if (entry.title && entry.content) {
+              const fileId = `kb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              const entryContent = this.formatJsonEntryAsMarkdown(entry);
+              
+              const newFile = await getDB().insert(schema.knowledgeBaseFiles).values({
+                id: fileId,
+                filename: `${entry.title.replace(/[^a-zA-Z0-9]/g, '_')}.md`,
+                content: entryContent,
+                fileType: 'text/markdown',
+                indexedContent: entryContent,
+                uploadedAt: new Date().toISOString(),
+              }).returning();
+
+              batchFiles.push(this.convertDatabaseKnowledgeFile(newFile[0]));
+            }
+          }
+          
+          return batchFiles;
+        }
+      } catch (error) {
+        console.error('Error processing JSON file:', error);
+        // Fall through to regular file processing
+      }
+    }
+
+    // Handle single file upload
     const fileId = `kb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     const newFile = await getDB().insert(schema.knowledgeBaseFiles).values({
       id: fileId,
       filename: file.name,
       content,
-      fileType: file.type || 'text/plain',
+      fileType,
       indexedContent: indexedContent || content, // Use provided indexed content or raw content
       uploadedAt: new Date().toISOString(),
     }).returning();
 
     return this.convertDatabaseKnowledgeFile(newFile[0]);
+  }
+
+  /**
+   * Format JSON knowledge base entry as structured markdown
+   */
+  private formatJsonEntryAsMarkdown(entry: any): string {
+    let markdown = `# ${entry.title}\n\n`;
+    
+    if (entry.category) {
+      markdown += `**Category:** ${entry.category}\n\n`;
+    }
+    
+    if (entry.summary || entry.description) {
+      markdown += `## Summary\n\n${entry.summary || entry.description}\n\n`;
+    }
+    
+    markdown += `## Content\n\n${entry.content}\n\n`;
+    
+    if (entry.tags && Array.isArray(entry.tags)) {
+      markdown += `**Tags:** ${entry.tags.map((tag: string) => `#${tag.replace(/\s+/g, '_')}`).join(' ')}\n\n`;
+    }
+    
+    if (entry.source) {
+      markdown += `**Source:** ${entry.source}\n\n`;
+    }
+    
+    if (entry.readTime) {
+      markdown += `**Read Time:** ${entry.readTime}\n`;
+    }
+    
+    return markdown;
   }
 
   async getAllKnowledgeBaseFiles(): Promise<KnowledgeBaseFile[]> {

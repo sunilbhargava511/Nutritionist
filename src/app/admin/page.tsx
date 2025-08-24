@@ -65,9 +65,25 @@ export default function AdminPanel() {
   const [audioCache, setAudioCache] = useState<any[]>([]);
   const [audioStats, setAudioStats] = useState<any>({ totalFiles: 0, totalSize: 0, cacheHitRate: 0 });
   const [serviceSummary, setServiceSummary] = useState<any>({ serviceDescription: '', keyBenefits: '' });
+  const [serviceProvider, setServiceProvider] = useState<any>({ businessName: '', phoneNumber: '', address: '', email: '', website: '' });
+  const [websiteUrl, setWebsiteUrl] = useState<string>('');
+  const [analyzingWebsite, setAnalyzingWebsite] = useState(false);
+  const [websiteAnalysis, setWebsiteAnalysis] = useState<any>(null);
   const [syncingTranscripts, setSyncingTranscripts] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Service content styling state
+  const [stylingServiceContent, setStylingServiceContent] = useState<{
+    serviceDescription: boolean;
+    keyBenefits: boolean;
+  }>({
+    serviceDescription: false,
+    keyBenefits: false
+  });
+  
+  // User page customization state
+  const [customizingUserPages, setCustomizingUserPages] = useState(false);
   
   // Debug state
   const [debugInfo, setDebugInfo] = useState<any>({
@@ -420,6 +436,169 @@ export default function AdminPanel() {
     }
   };
 
+  // Website analysis functions
+  const analyzeWebsite = async () => {
+    if (!websiteUrl.trim()) {
+      setError('Please enter a website URL');
+      return;
+    }
+
+    setAnalyzingWebsite(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/admin/website-analyzer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: websiteUrl })
+      });
+
+      if (response.ok) {
+        const analysis = await response.json();
+        setWebsiteAnalysis(analysis);
+        
+        // Auto-populate service summary if analysis was successful
+        if (analysis.serviceDescription && analysis.keyBenefits) {
+          setServiceSummary({
+            serviceDescription: analysis.serviceDescription,
+            keyBenefits: analysis.keyBenefits
+          });
+        }
+
+        // Auto-populate service provider info
+        if (analysis.businessInfo) {
+          setServiceProvider({
+            ...serviceProvider,
+            businessName: analysis.businessInfo.businessName || serviceProvider.businessName,
+            phoneNumber: analysis.businessInfo.phoneNumber || serviceProvider.phoneNumber,
+            address: analysis.businessInfo.address || serviceProvider.address,
+            email: analysis.businessInfo.email || serviceProvider.email,
+            website: websiteUrl
+          });
+        }
+      } else {
+        const errorData = await response.json();
+        setError(`Failed to analyze website: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      setError('Failed to analyze website. Please check the URL and try again.');
+    } finally {
+      setAnalyzingWebsite(false);
+    }
+  };
+
+  // Style service content using AI
+  const styleServiceContent = async (contentType: 'serviceDescription' | 'keyBenefits') => {
+    setStylingServiceContent(prev => ({ ...prev, [contentType]: true }));
+    setError(null);
+
+    try {
+      const contentValue = serviceSummary[contentType];
+      if (!contentValue.trim()) {
+        setError(`Please enter ${contentType === 'serviceDescription' ? 'service description' : 'key benefits'} content before styling`);
+        return;
+      }
+
+      const response = await fetch('/api/admin/style-service-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: contentValue,
+          contentType: contentType,
+          businessInfo: serviceProvider
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setServiceSummary(prev => ({
+          ...prev,
+          [contentType]: data.styledContent
+        }));
+        
+        // Show success message temporarily
+        const successMsg = `${contentType === 'serviceDescription' ? 'Service description' : 'Key benefits'} styled successfully`;
+        setError(null);
+        // You could add a success state here if desired
+        
+      } else {
+        const errorData = await response.json();
+        setError(`Failed to style content: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      setError('Failed to style content. Please try again.');
+    } finally {
+      setStylingServiceContent(prev => ({ ...prev, [contentType]: false }));
+    }
+  };
+
+  // Customize user pages based on service provider info
+  const customizeUserPages = async () => {
+    setCustomizingUserPages(true);
+    setError(null);
+
+    try {
+      // Validate that we have the necessary information
+      if (!serviceProvider.businessName || !serviceSummary.serviceDescription) {
+        setError('Please complete both Service Provider Information and Service Summary before customizing user pages');
+        return;
+      }
+
+      const response = await fetch('/api/admin/customize-user-pages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceProvider: serviceProvider,
+          serviceSummary: serviceSummary
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Show success message
+        alert(`Successfully customized user pages for ${serviceProvider.businessName}!\n\nUpdated:\n- Home page branding and messaging\n- Voice conversation context\n- Lesson interface descriptions`);
+        
+      } else {
+        const errorData = await response.json();
+        setError(`Failed to customize user pages: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      setError('Failed to customize user pages. Please try again.');
+    } finally {
+      setCustomizingUserPages(false);
+    }
+  };
+
+  const saveServiceProvider = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const providerData = {
+      businessName: formData.get('businessName') as string,
+      phoneNumber: formData.get('phoneNumber') as string,
+      address: formData.get('address') as string,
+      email: formData.get('email') as string,
+      website: formData.get('website') as string
+    };
+
+    try {
+      const response = await fetch('/api/admin/service-provider', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(providerData)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setServiceProvider(data.provider);
+        setError(null);
+      } else {
+        setError('Failed to save service provider information');
+      }
+    } catch (err) {
+      setError('Failed to save service provider information');
+    }
+  };
+
   // Load initial data
   useEffect(() => {
     loadData();
@@ -496,7 +675,7 @@ export default function AdminPanel() {
     setError(null);
     
     try {
-      const [lessonsRes, settingsRes, promptsRes, knowledgeRes, reportsRes, templateRes, openingMessagesRes, conversationStyleRes, serviceSummaryRes] = await Promise.all([
+      const [lessonsRes, settingsRes, promptsRes, knowledgeRes, reportsRes, templateRes, openingMessagesRes, conversationStyleRes, serviceSummaryRes, serviceProviderRes] = await Promise.all([
         fetch('/api/lessons'),
         fetch('/api/admin/settings'),
         fetch('/api/admin/prompts'),
@@ -505,7 +684,8 @@ export default function AdminPanel() {
         fetch('/api/admin/base-template'),
         fetch('/api/admin/opening-messages'),
         fetch('/api/admin/conversation-style'),
-        fetch('/api/admin/service-summary')
+        fetch('/api/admin/service-summary'),
+        fetch('/api/admin/service-provider')
       ]);
 
       if (lessonsRes.ok) {
@@ -555,6 +735,15 @@ export default function AdminPanel() {
       if (serviceSummaryRes.ok) {
         const serviceSummaryData = await serviceSummaryRes.json();
         setServiceSummary(serviceSummaryData.summary || { serviceDescription: '', keyBenefits: '' });
+      }
+
+      if (serviceProviderRes.ok) {
+        const serviceProviderData = await serviceProviderRes.json();
+        setServiceProvider(serviceProviderData.provider || { businessName: '', phoneNumber: '', address: '', email: '', website: '' });
+        // Set website URL if it exists
+        if (serviceProviderData.provider?.website) {
+          setWebsiteUrl(serviceProviderData.provider.website);
+        }
       }
     } catch (err) {
       setError('Failed to load admin data');
@@ -1771,21 +1960,105 @@ The lesson context will be automatically added to this prompt when used.`;
             <div className="p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Overview</h2>
               
+              {/* Provider Website Analysis */}
+              <div className="mb-8 p-6 bg-indigo-50 rounded-lg border border-indigo-200">
+                <h3 className="text-lg font-semibold text-indigo-900 mb-4">Provider Website Analysis</h3>
+                <p className="text-sm text-indigo-700 mb-4">
+                  Enter your website URL to automatically extract and populate service information below.
+                </p>
+                <div className="flex gap-4 mb-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-indigo-800 mb-1">
+                      Website URL
+                    </label>
+                    <input
+                      type="url"
+                      value={websiteUrl}
+                      onChange={(e) => setWebsiteUrl(e.target.value)}
+                      placeholder="https://www.yourwebsite.com"
+                      className="w-full px-3 py-2 border border-indigo-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={analyzeWebsite}
+                      disabled={analyzingWebsite || !websiteUrl.trim()}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium flex items-center gap-2"
+                    >
+                      {analyzingWebsite ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-4 h-4" />
+                          Analyze Website
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                
+                {websiteAnalysis && (
+                  <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="w-4 h-4 text-green-600" />
+                      <span className="text-sm font-medium text-green-800">Website analyzed successfully!</span>
+                    </div>
+                    <p className="text-sm text-green-700">
+                      Service information has been automatically populated in the sections below. Review and edit as needed.
+                    </p>
+                  </div>
+                )}
+              </div>
+              
               {/* Service Summary */}
               <div className="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Service Summary</h3>
-                <p className="text-sm text-gray-700 mb-4">
+                <p className="text-sm text-gray-700 mb-2">
                   Describe what your service offers and how it helps clients. This summary will be used throughout the application and in opening messages.
                 </p>
+                <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-md">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Sparkles className="w-4 h-4 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-800">AI Content Styling</span>
+                  </div>
+                  <p className="text-xs text-purple-700">
+                    Use "Style Content" to enhance your descriptions with professional tone, better flow, and compelling language while preserving your original meaning.
+                  </p>
+                </div>
                 <form onSubmit={saveServiceSummary} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Service Description (10-20 lines)
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Service Description (10-20 lines)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => styleServiceContent('serviceDescription')}
+                        disabled={stylingServiceContent.serviceDescription || !serviceSummary.serviceDescription.trim()}
+                        className="flex items-center gap-2 px-3 py-1 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {stylingServiceContent.serviceDescription ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span>Styling...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            <span>Style Content</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                     <textarea
                       name="serviceDescription"
                       rows={12}
-                      defaultValue={serviceSummary.serviceDescription}
+                      value={serviceSummary.serviceDescription}
+                      onChange={(e) => setServiceSummary({...serviceSummary, serviceDescription: e.target.value})}
                       placeholder="We provide comprehensive nutrition education and counseling services designed to help individuals achieve their health and wellness goals. Our AI-powered platform combines evidence-based nutrition science with personalized guidance to create effective, sustainable dietary changes.
 
 Our services include:
@@ -1806,13 +2079,34 @@ Our certified nutrition professionals have developed this platform to make quali
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Key Benefits (one per line)
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Key Benefits (one per line)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => styleServiceContent('keyBenefits')}
+                        disabled={stylingServiceContent.keyBenefits || !serviceSummary.keyBenefits.trim()}
+                        className="flex items-center gap-2 px-3 py-1 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {stylingServiceContent.keyBenefits ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span>Styling...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            <span>Style Content</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                     <textarea
                       name="keyBenefits"
                       rows={6}
-                      defaultValue={serviceSummary.keyBenefits}
+                      value={serviceSummary.keyBenefits}
+                      onChange={(e) => setServiceSummary({...serviceSummary, keyBenefits: e.target.value})}
                       placeholder="Evidence-based nutrition guidance
 Personalized meal planning and recommendations  
 Interactive learning modules with expert instruction
@@ -1841,7 +2135,7 @@ Affordable alternative to traditional nutrition counseling"
                 <p className="text-sm text-blue-700 mb-4">
                   This information drives the opening messages and website branding.
                 </p>
-                <form className="space-y-4">
+                <form onSubmit={saveServiceProvider} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-blue-800 mb-1">
@@ -1849,6 +2143,9 @@ Affordable alternative to traditional nutrition counseling"
                       </label>
                       <input
                         type="text"
+                        name="businessName"
+                        value={serviceProvider.businessName}
+                        onChange={(e) => setServiceProvider({...serviceProvider, businessName: e.target.value})}
                         placeholder="Your Business Name"
                         className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       />
@@ -1859,6 +2156,9 @@ Affordable alternative to traditional nutrition counseling"
                       </label>
                       <input
                         type="tel"
+                        name="phoneNumber"
+                        value={serviceProvider.phoneNumber}
+                        onChange={(e) => setServiceProvider({...serviceProvider, phoneNumber: e.target.value})}
                         placeholder="(555) 123-4567"
                         className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       />
@@ -1870,32 +2170,27 @@ Affordable alternative to traditional nutrition counseling"
                     </label>
                     <textarea
                       rows={2}
+                      name="address"
+                      value={serviceProvider.address}
+                      onChange={(e) => setServiceProvider({...serviceProvider, address: e.target.value})}
                       placeholder="123 Main Street, City, State 12345"
                       className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-blue-800 mb-1">
-                        Email (Optional)
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="contact@yourbusiness.com"
-                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-blue-800 mb-1">
-                        Website (Optional)
-                      </label>
-                      <input
-                        type="url"
-                        placeholder="www.yourbusiness.com"
-                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-blue-800 mb-1">
+                      Email (Optional)
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={serviceProvider.email}
+                      onChange={(e) => setServiceProvider({...serviceProvider, email: e.target.value})}
+                      placeholder="contact@yourbusiness.com"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
                   </div>
+                  <input type="hidden" name="website" value={websiteUrl} />
                   <button
                     type="submit"
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
@@ -1903,6 +2198,50 @@ Affordable alternative to traditional nutrition counseling"
                     Save Service Provider Info
                   </button>
                 </form>
+              </div>
+
+              {/* User Page Customization */}
+              <div className="mb-8 p-6 bg-orange-50 rounded-lg border border-orange-200">
+                <h3 className="text-lg font-semibold text-orange-900 mb-4">User Experience Customization</h3>
+                <p className="text-sm text-orange-700 mb-4">
+                  Customize the user-facing pages (Home, Voice Conversations, Lessons) to match your service provider information and branding.
+                </p>
+                <div className="mb-4 p-4 bg-orange-100 border border-orange-300 rounded-md">
+                  <h4 className="text-sm font-semibold text-orange-800 mb-2">What will be customized:</h4>
+                  <ul className="text-xs text-orange-700 space-y-1">
+                    <li>• <strong>Home Page:</strong> Business name, welcome messages, and service descriptions</li>
+                    <li>• <strong>Voice Interface:</strong> Opening messages and conversation context</li>
+                    <li>• <strong>Lesson Interface:</strong> Educational content framing and provider expertise</li>
+                  </ul>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-orange-800 mb-1">
+                      Apply Service Branding
+                    </div>
+                    <div className="text-xs text-orange-600">
+                      Requires completed Service Provider and Service Summary information
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={customizeUserPages}
+                    disabled={customizingUserPages || !serviceProvider.businessName || !serviceSummary.serviceDescription}
+                    className="flex items-center gap-3 px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm transition-all"
+                  >
+                    {customizingUserPages ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Customizing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Home className="w-5 h-5" />
+                        <span>Customize User Pages</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Website Configuration */}

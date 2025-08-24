@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file type
-    const allowedTypes = ['text/plain', 'text/markdown', 'application/pdf', 'text/csv'];
+    const allowedTypes = ['text/plain', 'text/markdown', 'application/pdf', 'text/csv', 'application/json'];
     const fileType = file.type || 'text/plain';
     
     if (!allowedTypes.includes(fileType)) {
@@ -56,14 +56,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newFile = await adminService.uploadKnowledgeBaseFile(
+    const result = await adminService.uploadKnowledgeBaseFile(
       file,
       indexedContent || undefined
     );
 
+    // Handle batch upload result (for JSON files with multiple entries)
+    if (Array.isArray(result)) {
+      return NextResponse.json({
+        success: true,
+        files: result,
+        message: `Successfully uploaded ${result.length} knowledge base entries from JSON file`,
+        isBatch: true
+      });
+    }
+
+    // Handle single file upload
     return NextResponse.json({
       success: true,
-      file: newFile,
+      file: result,
     });
   } catch (error) {
     console.error('Error uploading knowledge base file:', error);

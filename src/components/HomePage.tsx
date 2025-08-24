@@ -39,6 +39,8 @@ export default function HomePage() {
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
+  const [serviceProvider, setServiceProvider] = useState<any>(null);
+  const [websiteConfig, setWebsiteConfig] = useState<any>(null);
   
   // Close menu when clicking outside
   useEffect(() => {
@@ -97,6 +99,10 @@ export default function HomePage() {
     
     // Load lessons
     loadLessons();
+    
+    // Load service provider and website config
+    loadServiceProvider();
+    loadWebsiteConfig();
   }, []);
   
   const loadLessons = async () => {
@@ -180,6 +186,34 @@ export default function HomePage() {
     }
   };
 
+  const loadServiceProvider = async () => {
+    try {
+      const response = await fetch('/api/admin/service-provider');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.provider) {
+          setServiceProvider(data.provider);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load service provider:', error);
+    }
+  };
+
+  const loadWebsiteConfig = async () => {
+    try {
+      const response = await fetch('/api/admin/website-config');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.config) {
+          setWebsiteConfig(data.config);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load website config:', error);
+    }
+  };
+
   const handleStartNewSession = async () => {
     try {
       // Set flag to auto-start conversation
@@ -249,6 +283,32 @@ export default function HomePage() {
       alert('Failed to start lesson. Please try again.');
     }
   };
+
+  // Helper function to extract provider name from business name
+  const getProviderName = () => {
+    if (!serviceProvider?.businessName) return 'Dr. Smith';
+    
+    // Remove common business suffixes and titles
+    let name = serviceProvider.businessName
+      .replace(/,?\s*(LLC|Inc|Corp|Ltd|RD|MD|PhD|LCSW|LPC|LMFT|CPA|JD)\.?$/gi, '')
+      .replace(/,?\s*(Registered Dietitian|Licensed Clinical Social Worker|Licensed Professional Counselor)$/gi, '')
+      .replace(/^(Dr\.?|Doctor|Professor|Prof\.?)\s+/gi, '')
+      .trim();
+
+    // If it looks like a person's name (2-3 words), return first name
+    const words = name.split(' ').filter(w => w.length > 0);
+    if (words.length >= 2 && words.length <= 3) {
+      return words[0]; // Return first name for casual reference
+    }
+
+    // Otherwise, return the first part before any comma
+    return name.split(',')[0].trim() || 'your advisor';
+  };
+
+  // Get business name for branding
+  const getBusinessName = () => {
+    return serviceProvider?.businessName || 'NutritionAssist';
+  };
   
   const getProgressStats = () => {
     const totalSessions = recentSessions.length;
@@ -301,7 +361,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-5 py-4">
           <div className="flex items-center justify-between">
             <div className="text-2xl font-bold" style={{ color: '#2d7d46' }}>
-              NutritionAssist
+              {getBusinessName()}
             </div>
             <div className="flex items-center gap-3">
               <span style={{ color: '#1a1a1a' }}>Hi, {userName}</span>
@@ -423,7 +483,7 @@ export default function HomePage() {
               Start a Conversation
             </h2>
             <p className="text-lg mb-6" style={{ opacity: 0.9 }}>
-              Ask any nutrition question or get personalized guidance from Dr. Smith
+              Ask any nutrition question or get personalized guidance from {getProviderName()}
             </p>
             <button
               onClick={handleStartNewSession}
@@ -489,7 +549,9 @@ export default function HomePage() {
           {/* Recommended Lessons */}
           <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-xl font-semibold" style={{ color: '#1a1a1a' }}>Recommended Lessons</h3>
+              <h3 className="text-xl font-semibold" style={{ color: '#1a1a1a' }}>
+                Recommended {websiteConfig?.lessonsName || 'Lessons'}
+              </h3>
               <button 
                 onClick={() => setCurrentView('knowledge')}
                 className="text-sm font-medium" 
@@ -521,7 +583,7 @@ export default function HomePage() {
                         {lesson.title}
                       </div>
                       <div className="text-sm" style={{ color: '#666' }}>
-                        15 min lesson
+                        {websiteConfig?.lessonsDescription || 'Educational content'}
                       </div>
                     </div>
                   </div>
