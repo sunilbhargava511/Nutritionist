@@ -233,6 +233,33 @@ function createTables(sqlite: Database.Database) {
       )
     `);
     
+    // Create opening_messages table (required for customization)
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS opening_messages (
+        id text PRIMARY KEY NOT NULL,
+        type text NOT NULL,
+        lesson_id text,
+        message_content text NOT NULL,
+        voice_settings text,
+        active integer DEFAULT true,
+        is_generated integer DEFAULT false,
+        original_generated_content text,
+        generated_at text,
+        original_user_input text,
+        is_styled integer DEFAULT false,
+        styled_at text,
+        audio_url text,
+        audio_blob text,
+        audio_generated_at text,
+        audio_hash text,
+        audio_duration real,
+        cached_audio_url text,
+        needs_audio_regeneration integer DEFAULT false,
+        created_at text DEFAULT (CURRENT_TIMESTAMP),
+        updated_at text DEFAULT (CURRENT_TIMESTAMP)
+      )
+    `);
+    
     console.log('[DB] Tables created successfully');
   } catch (error) {
     console.error('[DB] Error creating tables:', error);
