@@ -255,7 +255,6 @@ ${lesson.videoTranscript}
 
 ## Video Information
 - **Video URL**: ${lesson.videoUrl || 'N/A'}
-- **Duration**: ${lesson.videoDuration ? `${lesson.videoDuration} seconds` : 'Unknown'}
 - **Language**: ${lesson.transcriptLanguage || 'en'}
 - **Extracted**: ${lesson.transcriptExtractedAt || 'Unknown'}
 
@@ -308,7 +307,6 @@ ${lesson.videoTranscript}
       videoTranscript: dbLesson.videoTranscript,
       transcriptExtractedAt: dbLesson.transcriptExtractedAt ? new Date(dbLesson.transcriptExtractedAt) : null,
       transcriptLanguage: dbLesson.transcriptLanguage,
-      videoDuration: dbLesson.videoDuration,
       orderIndex: dbLesson.orderIndex,
       prerequisites: dbLesson.prerequisites ? JSON.parse(dbLesson.prerequisites) : [],
       active: Boolean(dbLesson.active),
