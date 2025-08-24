@@ -400,6 +400,200 @@ export class OpeningMessageService {
     
     await this.updateMessageContent(messageId, message.originalGeneratedContent);
   }
+
+  /**
+   * Regenerate audio for all opening messages
+   */
+  async regenerateAllAudio(): Promise<{ total: number; succeeded: number; failed: number; errors: string[] }> {
+    const db = getDB();
+    const allMessages = await db
+      .select()
+      .from(schema.openingMessages)
+      .all();
+
+    const result = {
+      total: allMessages.length,
+      succeeded: 0,
+      failed: 0,
+      errors: [] as string[]
+    };
+
+    for (const message of allMessages) {
+      try {
+        await this.regenerateAudio(message.id);
+        result.succeeded++;
+      } catch (error) {
+        result.failed++;
+        result.errors.push(`Message ${message.id}: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(`Failed to regenerate audio for message ${message.id}:`, error);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Regenerate audio for a specific message
+   */
+  async regenerateAudio(messageId: string): Promise<void> {
+    const message = await this.getMessageById(messageId);
+    if (!message) {
+      throw new Error(`Message not found: ${messageId}`);
+    }
+
+    const db = getDB();
+    
+    // Clear any existing audio cache for this message
+    await db
+      .delete(schema.audioCache)
+      .where(eq(schema.audioCache.messageId, messageId));
+
+    // Generate new audio using the audio cache service
+    const { audioCacheService } = await import('./audio-cache-service');
+    
+    // Get voice settings for this message
+    const voiceSettings = message.voiceSettings 
+      ? JSON.parse(message.voiceSettings) 
+      : await this.getDefaultVoiceSettings();
+
+    try {
+      const audioResult = await audioCacheService.generateAudio(
+        message.messageContent,
+        {
+          voiceId: voiceSettings.voiceId,
+          stability: voiceSettings.stability,
+          similarityBoost: voiceSettings.similarityBoost,
+          style: voiceSettings.style,
+          useSpeakerBoost: voiceSettings.useSpeakerBoost
+        }
+      );
+
+      console.log(`Successfully regenerated audio for message ${messageId}`);
+    } catch (error) {
+      console.error(`Failed to regenerate audio for message ${messageId}:`, error);
+      throw new Error(`Audio generation failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Check if a message needs audio regeneration (content or settings changed)
+   */
+  async needsAudioRegeneration(messageId: string): Promise<boolean> {
+    const message = await this.getMessageById(messageId);
+    if (!message) {
+      return false;
+    }
+
+    const db = getDB();
+    
+    // Check if there's cached audio for this message
+    const cachedAudio = await db
+      .select()
+      .from(schema.audioCache)
+      .where(eq(schema.audioCache.messageId, messageId))
+      .get();
+
+    if (!cachedAudio) {
+      return true; // No cached audio exists
+    }
+
+    // Compare current voice settings with cached ones
+    const currentVoiceSettings = message.voiceSettings 
+      ? JSON.parse(message.voiceSettings) 
+      : await this.getDefaultVoiceSettings();
+    
+    const cachedVoiceSettings = cachedAudio.voiceSettings 
+      ? JSON.parse(cachedAudio.voiceSettings) 
+      : null;
+    
+    // Check if voice settings or content have changed
+    if (!cachedVoiceSettings) {
+      return true; // No voice settings stored, needs regeneration
+    }
+    
+    // Compare voice settings
+    const settingsChanged = 
+      currentVoiceSettings.voiceId !== cachedVoiceSettings.voiceId ||
+      currentVoiceSettings.stability !== cachedVoiceSettings.stability ||
+      currentVoiceSettings.similarityBoost !== cachedVoiceSettings.similarityBoost ||
+      currentVoiceSettings.style !== cachedVoiceSettings.style ||
+      currentVoiceSettings.useSpeakerBoost !== cachedVoiceSettings.useSpeakerBoost;
+    
+    return settingsChanged;
+  }
+
+  /**
+   * Get comprehensive audio cache statistics
+   */
+  async getAudioCacheStats(): Promise<{
+    totalFiles: number;
+    totalSize: number;
+    cacheHitRate: number;
+    oldestFile: Date | null;
+    newestFile: Date | null;
+    messageStats: Array<{
+      messageId: string;
+      messageType: string;
+      hasAudio: boolean;
+      needsRegeneration: boolean;
+      audioSize?: number;
+      lastGenerated?: Date;
+    }>;
+  }> {
+    const db = getDB();
+    
+    // Get all opening messages
+    const allMessages = await db
+      .select()
+      .from(schema.openingMessages)
+      .all();
+
+    // Get all cached audio
+    const allCachedAudio = await db
+      .select()
+      .from(schema.audioCache)
+      .all();
+
+    // Calculate basic stats
+    const totalSize = allCachedAudio.reduce((sum, audio) => sum + (audio.sizeBytes || 0), 0);
+    const dates = allCachedAudio
+      .map(audio => audio.generatedAt)
+      .filter(date => date)
+      .map(date => new Date(date));
+    
+    const oldestFile = dates.length > 0 ? new Date(Math.min(...dates.map(d => d.getTime()))) : null;
+    const newestFile = dates.length > 0 ? new Date(Math.max(...dates.map(d => d.getTime()))) : null;
+
+    // Build message stats
+    const messageStats = [];
+    for (const message of allMessages) {
+      const cachedAudio = allCachedAudio.find(audio => audio.messageId === message.id);
+      const hasAudio = !!cachedAudio;
+      const needsRegeneration = hasAudio ? await this.needsAudioRegeneration(message.id) : true;
+      
+      messageStats.push({
+        messageId: message.id,
+        messageType: message.messageType || 'unknown',
+        hasAudio,
+        needsRegeneration,
+        audioSize: cachedAudio?.sizeBytes,
+        lastGenerated: cachedAudio?.generatedAt ? new Date(cachedAudio.generatedAt) : undefined
+      });
+    }
+
+    // Calculate cache hit rate (messages with audio vs total messages)
+    const messagesWithAudio = messageStats.filter(stat => stat.hasAudio).length;
+    const cacheHitRate = allMessages.length > 0 ? (messagesWithAudio / allMessages.length) * 100 : 0;
+
+    return {
+      totalFiles: allCachedAudio.length,
+      totalSize,
+      cacheHitRate: Math.round(cacheHitRate * 100) / 100,
+      oldestFile,
+      newestFile,
+      messageStats
+    };
+  }
 }
 
 // Export singleton instance
