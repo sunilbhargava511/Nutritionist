@@ -74,6 +74,54 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// HTML entity decoder function
+function decodeHtmlEntities(text: string): string {
+  const entities: { [key: string]: string } = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&apos;': "'",
+    '&rsquo;': "'",
+    '&lsquo;': "'",
+    '&rdquo;': '"',
+    '&ldquo;': '"',
+    '&nbsp;': ' ',
+    '&ndash;': '–',
+    '&mdash;': '—',
+    '&hellip;': '…',
+    '&copy;': '©',
+    '&reg;': '®',
+    '&trade;': '™',
+    '&deg;': '°',
+    '&plusmn;': '±',
+    '&times;': '×',
+    '&divide;': '÷',
+    '&frac12;': '½',
+    '&frac14;': '¼',
+    '&frac34;': '¾'
+  };
+
+  let decoded = text;
+  
+  // Replace named entities
+  for (const [entity, char] of Object.entries(entities)) {
+    decoded = decoded.replace(new RegExp(entity, 'g'), char);
+  }
+  
+  // Replace numeric entities (e.g., &#8217;, &#x2019;)
+  decoded = decoded.replace(/&#(\d+);/g, (match, code) => {
+    return String.fromCharCode(parseInt(code, 10));
+  });
+  
+  decoded = decoded.replace(/&#x([0-9a-f]+);/gi, (match, hex) => {
+    return String.fromCharCode(parseInt(hex, 16));
+  });
+  
+  return decoded;
+}
+
 function analyzeRealWebsite(html: string, url: URL): any {
   const analysis: any = {
     businessInfo: {},
@@ -83,11 +131,11 @@ function analyzeRealWebsite(html: string, url: URL): any {
 
   // Extract title
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  const title = titleMatch ? titleMatch[1].trim() : '';
+  const title = titleMatch ? decodeHtmlEntities(titleMatch[1].trim()) : '';
 
   // Extract meta description
   const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
-  const metaDescription = metaDescMatch ? metaDescMatch[1].trim() : '';
+  const metaDescription = metaDescMatch ? decodeHtmlEntities(metaDescMatch[1].trim()) : '';
 
   // Extract Open Graph data
   const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
@@ -95,7 +143,7 @@ function analyzeRealWebsite(html: string, url: URL): any {
   const ogSiteNameMatch = html.match(/<meta[^>]*property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i);
 
   // Extract business name
-  const businessName = ogSiteNameMatch ? ogSiteNameMatch[1] : 
+  const businessName = ogSiteNameMatch ? decodeHtmlEntities(ogSiteNameMatch[1]) : 
                       extractBusinessNameFromTitle(title) || 
                       extractBusinessNameFromDomain(url.hostname.replace('www.', ''));
   
@@ -142,21 +190,21 @@ function analyzeRealWebsite(html: string, url: URL): any {
   analysis.businessInfo.address = address || '123 Main Street, City, State 12345';
 
   // Generate service description
-  let serviceDesc = ogDescMatch ? ogDescMatch[1] : (metaDescription || '');
+  let serviceDesc = ogDescMatch ? decodeHtmlEntities(ogDescMatch[1]) : (metaDescription || '');
   
   // Extract key content from H1, H2 tags
   const h1Matches = html.match(/<h1[^>]*>([^<]+)<\/h1>/gi) || [];
   const h2Matches = html.match(/<h2[^>]*>([^<]+)<\/h2>/gi) || [];
   
   const headings = [...h1Matches, ...h2Matches].map(h => 
-    h.replace(/<[^>]+>/g, '').trim()
+    decodeHtmlEntities(h.replace(/<[^>]+>/g, '').trim())
   ).filter(h => h.length > 10 && h.length < 100);
 
   // Look for service-related content
   const serviceKeywords = ['service', 'offer', 'provide', 'help', 'support', 'nutrition', 'health', 'wellness', 'dietitian', 'counseling'];
   const paragraphs = html.match(/<p[^>]*>([^<]+)<\/p>/gi) || [];
   const relevantParagraphs = paragraphs
-    .map(p => p.replace(/<[^>]+>/g, '').trim())
+    .map(p => decodeHtmlEntities(p.replace(/<[^>]+>/g, '').trim()))
     .filter(p => {
       const lower = p.toLowerCase();
       return p.length > 50 && serviceKeywords.some(keyword => lower.includes(keyword));
@@ -178,7 +226,7 @@ function analyzeRealWebsite(html: string, url: URL): any {
   // Extract benefits from lists
   const listItems = html.match(/<li[^>]*>([^<]+)<\/li>/gi) || [];
   const benefits = listItems
-    .map(li => li.replace(/<[^>]+>/g, '').trim())
+    .map(li => decodeHtmlEntities(li.replace(/<[^>]+>/g, '').trim()))
     .filter(text => text.length > 10 && text.length < 150)
     .slice(0, 6);
 
@@ -213,7 +261,7 @@ function extractBusinessNameFromTitle(title: string): string {
   for (const pattern of patterns) {
     const match = title.match(pattern);
     if (match && match[1]) {
-      const name = match[1].trim();
+      const name = decodeHtmlEntities(match[1].trim());
       // Remove common words
       const cleaned = name.replace(/^(welcome to|home|about)\s+/i, '').trim();
       if (cleaned.length > 2 && cleaned.length < 50) {

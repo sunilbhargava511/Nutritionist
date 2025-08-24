@@ -57,7 +57,8 @@
       "Bash(NODE_ENV=production DATABASE_PATH=\"./test-database.sqlite\" HOSTNAME=0.0.0.0 PORT=3004 node .next/standalone/server.js)",
       "Bash(NODE_ENV=production DATABASE_PATH=\"./test-database.sqlite\" HOSTNAME=0.0.0.0 PORT=3005 node .next/standalone/server.js)",
       "Bash(find:*)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "Bash(railway domain:*)"
     ],
     "deny": [],
     "additionalDirectories": [

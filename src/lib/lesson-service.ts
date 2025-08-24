@@ -5,7 +5,7 @@ import {
   Lesson,
   UserSession,
   LessonConversation,
-  LessonProgress
+  KnowledgeBaseFile
 } from '@/types';
 
 export class LessonService {
@@ -64,51 +64,62 @@ export class LessonService {
   }
 
   async getAllLessons(activeOnly: boolean = false): Promise<Lesson[]> {
-    const lessons = activeOnly 
-      ? await getDB().select().from(schema.lessons)
-          .where(eq(schema.lessons.active, true))
-          .orderBy(asc(schema.lessons.orderIndex))
-      : await getDB().select().from(schema.lessons)
-          .orderBy(asc(schema.lessons.orderIndex));
+    let query = getDB().select().from(schema.lessons);
     
+    if (activeOnly) {
+      query = query.where(eq(schema.lessons.active, true));
+    }
+    
+    const lessons = await query.orderBy(asc(schema.lessons.orderIndex));
     return lessons.map(this.convertDatabaseLesson);
   }
 
-  async updateLesson(lessonId: string, updates: Partial<Lesson>): Promise<void> {
-    const dbUpdates: any = { ...updates };
-    
-    // Convert prerequisites array to JSON string
-    if (dbUpdates.prerequisites) {
-      dbUpdates.prerequisites = JSON.stringify(dbUpdates.prerequisites);
+  async updateLesson(lessonId: string, updates: Partial<{
+    title: string;
+    videoUrl: string;
+    videoPath: string;
+    videoType: string;
+    videoMimeType: string;
+    videoSize: number;
+    videoSummary: string;
+    startMessage: string;
+    orderIndex: number;
+    prerequisites: string[];
+    active: boolean;
+  }>): Promise<void> {
+    const updateData: any = {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+
+    // Handle prerequisites array
+    if (updates.prerequisites) {
+      updateData.prerequisites = JSON.stringify(updates.prerequisites);
     }
-    
-    // Convert Date objects to strings
-    if (dbUpdates.createdAt instanceof Date) {
-      dbUpdates.createdAt = dbUpdates.createdAt.toISOString();
-    }
-    if (dbUpdates.updatedAt instanceof Date) {
-      dbUpdates.updatedAt = dbUpdates.updatedAt.toISOString();
-    }
-    
+
     await getDB()
       .update(schema.lessons)
-      .set({
-        ...dbUpdates,
-        updatedAt: new Date().toISOString(),
-      })
+      .set(updateData)
       .where(eq(schema.lessons.id, lessonId));
   }
 
   async deleteLesson(lessonId: string): Promise<void> {
+    // Delete related lesson conversations first
+    await getDB()
+      .delete(schema.lessonConversations)
+      .where(eq(schema.lessonConversations.lessonId, lessonId));
+
+    // Delete the lesson
     await getDB()
       .delete(schema.lessons)
       .where(eq(schema.lessons.id, lessonId));
   }
 
   async reorderLessons(lessonIds: string[]): Promise<void> {
-    // Update order index for each lesson
+    const db = getDB();
+    
     for (let i = 0; i < lessonIds.length; i++) {
-      await getDB()
+      await db
         .update(schema.lessons)
         .set({ 
           orderIndex: i,
@@ -118,7 +129,20 @@ export class LessonService {
     }
   }
 
-  // Session Management
+  // YouTube URL Validation
+  validateYouTubeUrl(url: string): boolean {
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)/;
+    return youtubeRegex.test(url);
+  }
+
+  // Extract YouTube video ID from URL
+  extractYouTubeId(url: string): string | null {
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[7].length === 11) ? match[7] : null;
+  }
+
+  // User Session Management
   async createUserSession(userId?: string): Promise<UserSession> {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
@@ -131,7 +155,7 @@ export class LessonService {
       updatedAt: new Date().toISOString(),
     }).returning();
 
-    return this.convertDatabaseSession(newSession[0]);
+    return this.convertDatabaseUserSession(newSession[0]);
   }
 
   async getUserSession(sessionId: string): Promise<UserSession | null> {
@@ -142,65 +166,48 @@ export class LessonService {
       .limit(1);
 
     if (sessions.length === 0) return null;
-    return this.convertDatabaseSession(sessions[0]);
+    return this.convertDatabaseUserSession(sessions[0]);
   }
 
-  async updateUserSession(sessionId: string, updates: Partial<UserSession>): Promise<void> {
-    const dbUpdates: any = { ...updates };
-    
-    // Convert completedLessons array to JSON string
-    if (dbUpdates.completedLessons) {
-      dbUpdates.completedLessons = JSON.stringify(dbUpdates.completedLessons);
+  async updateUserSession(sessionId: string, updates: Partial<{
+    currentLessonId: string | null;
+    completedLessons: string[];
+  }>): Promise<void> {
+    const updateData: any = {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (updates.completedLessons) {
+      updateData.completedLessons = JSON.stringify(updates.completedLessons);
     }
-    
-    // Convert Date objects to strings
-    if (dbUpdates.createdAt instanceof Date) {
-      dbUpdates.createdAt = dbUpdates.createdAt.toISOString();
-    }
-    if (dbUpdates.updatedAt instanceof Date) {
-      dbUpdates.updatedAt = dbUpdates.updatedAt.toISOString();
-    }
-    
+
     await getDB()
       .update(schema.userSessions)
-      .set({
-        ...dbUpdates,
-        updatedAt: new Date().toISOString(),
-      })
+      .set(updateData)
       .where(eq(schema.userSessions.id, sessionId));
   }
 
-  async markLessonCompleted(sessionId: string, lessonId: string): Promise<void> {
-    const session = await this.getUserSession(sessionId);
-    if (!session) return;
-
-    const completedLessons = session.completedLessons || [];
-    if (!completedLessons.includes(lessonId)) {
-      completedLessons.push(lessonId);
-      await this.updateUserSession(sessionId, { completedLessons });
-    }
-  }
-
-  // Conversation Management
-  async createLessonConversation(
-    sessionId: string,
-    lessonId: string,
-    conversationId?: string
-  ): Promise<LessonConversation> {
-    const convId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  // Lesson Conversation Management
+  async createLessonConversation(data: {
+    sessionId: string;
+    lessonId: string;
+    conversationId?: string;
+  }): Promise<LessonConversation> {
+    const conversationId = `lesson_conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     const newConversation = await getDB().insert(schema.lessonConversations).values({
-      id: convId,
-      sessionId,
-      lessonId,
-      conversationId,
+      id: conversationId,
+      sessionId: data.sessionId,
+      lessonId: data.lessonId,
+      conversationId: data.conversationId,
       completed: false,
       messagesCount: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }).returning();
 
-    return this.convertDatabaseConversation(newConversation[0]);
+    return this.convertDatabaseLessonConversation(newConversation[0]);
   }
 
   async getLessonConversation(conversationId: string): Promise<LessonConversation | null> {
@@ -211,146 +218,79 @@ export class LessonService {
       .limit(1);
 
     if (conversations.length === 0) return null;
-    return this.convertDatabaseConversation(conversations[0]);
+    return this.convertDatabaseLessonConversation(conversations[0]);
   }
 
-  async updateLessonConversation(
-    conversationId: string, 
-    updates: Partial<LessonConversation>
-  ): Promise<void> {
-    const dbUpdates: any = { ...updates };
-    
-    // Convert Date objects to strings
-    if (dbUpdates.createdAt instanceof Date) {
-      dbUpdates.createdAt = dbUpdates.createdAt.toISOString();
-    }
-    if (dbUpdates.updatedAt instanceof Date) {
-      dbUpdates.updatedAt = dbUpdates.updatedAt.toISOString();
-    }
-    
+  async updateLessonConversation(conversationId: string, updates: Partial<{
+    completed: boolean;
+    messagesCount: number;
+  }>): Promise<void> {
     await getDB()
       .update(schema.lessonConversations)
       .set({
-        ...dbUpdates,
-        updatedAt: new Date().toISOString(),
+        ...updates,
+        updatedAt: new Date().toISOString()
       })
       .where(eq(schema.lessonConversations.id, conversationId));
-  }
-
-  // Progress Tracking
-  async getSessionProgress(sessionId: string): Promise<LessonProgress | null> {
-    const session = await this.getUserSession(sessionId);
-    if (!session) return null;
-
-    const allLessons = await this.getAllLessons(true);
-    const completedLessonIds = session.completedLessons || [];
-    
-    // Get completed lesson objects
-    const completedLessons = allLessons.filter(lesson => 
-      completedLessonIds.includes(lesson.id)
-    );
-    
-    // Get current lesson
-    const currentLesson = session.currentLessonId 
-      ? await this.getLesson(session.currentLessonId)
-      : null;
-    
-    // Find next recommended lesson (first uncompleted lesson with satisfied prerequisites)
-    const nextRecommendedLesson = await this.getNextRecommendedLesson(
-      sessionId, 
-      completedLessonIds, 
-      allLessons
-    );
-    
-    return {
-      sessionId,
-      completedLessons,
-      currentLesson: currentLesson || undefined,
-      nextRecommendedLesson,
-      totalLessons: allLessons.length,
-      percentComplete: allLessons.length > 0 
-        ? Math.round((completedLessons.length / allLessons.length) * 100)
-        : 0
-    };
-  }
-
-  async getNextRecommendedLesson(
-    sessionId: string,
-    completedLessonIds: string[],
-    allLessons?: Lesson[]
-  ): Promise<Lesson | undefined> {
-    if (!allLessons) {
-      allLessons = await this.getAllLessons(true);
-    }
-    
-    // Find first uncompleted lesson with satisfied prerequisites
-    for (const lesson of allLessons) {
-      if (!completedLessonIds.includes(lesson.id)) {
-        // Check if all prerequisites are completed
-        const prerequisitesSatisfied = lesson.prerequisites.every(prereqId => 
-          completedLessonIds.includes(prereqId)
-        );
-        
-        if (prerequisitesSatisfied) {
-          return lesson;
-        }
-      }
-    }
-    
-    return undefined;
-  }
-
-  // YouTube URL Validation
-  validateYouTubeUrl(url: string): boolean {
-    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/)[\w-]+/;
-    return youtubeRegex.test(url);
-  }
-
-  extractYouTubeVideoId(url: string): string | null {
-    const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
-    return match ? match[1] : null;
   }
 
   // Knowledge Base Integration
   async syncTranscriptToKnowledgeBase(lessonId: string): Promise<void> {
     const lesson = await this.getLesson(lessonId);
-    if (!lesson || !lesson.videoTranscript) return;
-
-    const { adminService } = await import('./admin-service');
-    
-    // Create a file-like object for the transcript
-    const transcriptContent = `# ${lesson.title} - Transcript\n\n${lesson.videoTranscript}`;
-    const fileName = `lesson_transcript_${lesson.id}.md`;
-    
-    // Create a Blob to mimic a file upload
-    const blob = new Blob([transcriptContent], { type: 'text/markdown' });
-    const file = new File([blob], fileName, { type: 'text/markdown' });
-
-    try {
-      await adminService.uploadKnowledgeBaseFile(file, transcriptContent);
-    } catch (error) {
-      console.error(`Failed to sync transcript for lesson ${lessonId}:`, error);
-    }
-  }
-
-  async syncAllTranscriptsToKnowledgeBase(): Promise<{ synced: number; errors: number }> {
-    const lessons = await this.getAllLessons();
-    let synced = 0;
-    let errors = 0;
-
-    for (const lesson of lessons) {
-      if (lesson.videoTranscript) {
-        try {
-          await this.syncTranscriptToKnowledgeBase(lesson.id);
-          synced++;
-        } catch (error) {
-          errors++;
-          console.error(`Failed to sync transcript for lesson ${lesson.id}:`, error);
-        }
-      }
+    if (!lesson || !lesson.videoTranscript) {
+      return;
     }
 
-    return { synced, errors };
+    const kbId = `transcript_${lessonId}`;
+    const filename = `${lesson.title.replace(/[^a-zA-Z0-9]/g, '_')}_transcript.md`;
+    
+    // Format transcript as markdown
+    const content = `# ${lesson.title} - Video Transcript
+
+## Lesson Summary
+${lesson.videoSummary}
+
+## Full Transcript
+${lesson.videoTranscript}
+
+## Video Information
+- **Video URL**: ${lesson.videoUrl || 'N/A'}
+- **Duration**: ${lesson.videoDuration ? `${lesson.videoDuration} seconds` : 'Unknown'}
+- **Language**: ${lesson.transcriptLanguage || 'en'}
+- **Extracted**: ${lesson.transcriptExtractedAt || 'Unknown'}
+
+---
+*This transcript was automatically extracted and synced to the knowledge base for search and reference purposes.*
+`;
+
+    // Check if transcript already exists in knowledge base
+    const existing = await getDB()
+      .select()
+      .from(schema.knowledgeBaseFiles)
+      .where(eq(schema.knowledgeBaseFiles.id, kbId))
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Update existing transcript
+      await getDB()
+        .update(schema.knowledgeBaseFiles)
+        .set({
+          content,
+          indexedContent: content,
+          filename,
+        })
+        .where(eq(schema.knowledgeBaseFiles.id, kbId));
+    } else {
+      // Create new transcript entry
+      await getDB().insert(schema.knowledgeBaseFiles).values({
+        id: kbId,
+        filename,
+        content,
+        fileType: 'text/markdown',
+        indexedContent: content,
+        uploadedAt: new Date().toISOString(),
+      });
+    }
   }
 
   // Utility Methods
@@ -366,8 +306,9 @@ export class LessonService {
       videoSummary: dbLesson.videoSummary,
       startMessage: dbLesson.startMessage,
       videoTranscript: dbLesson.videoTranscript,
-      transcriptExtractedAt: dbLesson.transcriptExtractedAt ? new Date(dbLesson.transcriptExtractedAt) : undefined,
+      transcriptExtractedAt: dbLesson.transcriptExtractedAt ? new Date(dbLesson.transcriptExtractedAt) : null,
       transcriptLanguage: dbLesson.transcriptLanguage,
+      videoDuration: dbLesson.videoDuration,
       orderIndex: dbLesson.orderIndex,
       prerequisites: dbLesson.prerequisites ? JSON.parse(dbLesson.prerequisites) : [],
       active: Boolean(dbLesson.active),
@@ -376,7 +317,7 @@ export class LessonService {
     };
   }
 
-  private convertDatabaseSession(dbSession: any): UserSession {
+  private convertDatabaseUserSession(dbSession: any): UserSession {
     return {
       id: dbSession.id,
       userId: dbSession.userId,
@@ -387,14 +328,14 @@ export class LessonService {
     };
   }
 
-  private convertDatabaseConversation(dbConversation: any): LessonConversation {
+  private convertDatabaseLessonConversation(dbConversation: any): LessonConversation {
     return {
       id: dbConversation.id,
       sessionId: dbConversation.sessionId,
       lessonId: dbConversation.lessonId,
       conversationId: dbConversation.conversationId,
       completed: Boolean(dbConversation.completed),
-      messagesCount: dbConversation.messagesCount,
+      messagesCount: dbConversation.messagesCount || 0,
       createdAt: new Date(dbConversation.createdAt),
       updatedAt: new Date(dbConversation.updatedAt),
     };
