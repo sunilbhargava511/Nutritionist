@@ -67,10 +67,73 @@ const initDB = () => {
     // Run initial table creation
     createTables(sqlite);
     
+    // Run migrations for existing tables
+    migrateTables(sqlite);
+    
     db = drizzle(sqlite, { schema });
   }
   return { db, sqlite };
 };
+
+// Migrate existing tables to add missing columns
+function migrateTables(sqlite: Database.Database) {
+  try {
+    // Check if lessons table has video_path column, if not add missing columns
+    const columns = sqlite.prepare("PRAGMA table_info(lessons)").all() as any[];
+    const columnNames = columns.map(col => col.name);
+    
+    if (!columnNames.includes('video_path')) {
+      console.log('[DB] Migrating lessons table - adding missing columns');
+      sqlite.exec(`
+        ALTER TABLE lessons ADD COLUMN video_path text;
+        ALTER TABLE lessons ADD COLUMN video_type text DEFAULT 'url';
+        ALTER TABLE lessons ADD COLUMN video_mime_type text;
+        ALTER TABLE lessons ADD COLUMN video_size integer;
+        ALTER TABLE lessons ADD COLUMN video_transcript text;
+        ALTER TABLE lessons ADD COLUMN transcript_extracted_at text;
+        ALTER TABLE lessons ADD COLUMN transcript_language text DEFAULT 'en';
+      `);
+      
+      // Make video_url nullable for existing records
+      sqlite.exec(`
+        CREATE TABLE lessons_new (
+          id text PRIMARY KEY NOT NULL,
+          title text NOT NULL,
+          video_url text,
+          video_path text,
+          video_type text NOT NULL DEFAULT 'url',
+          video_mime_type text,
+          video_size integer,
+          video_summary text NOT NULL,
+          start_message text,
+          video_transcript text,
+          transcript_extracted_at text,
+          transcript_language text DEFAULT 'en',
+          order_index integer NOT NULL,
+          prerequisites text,
+          active integer DEFAULT true,
+          created_at text DEFAULT (CURRENT_TIMESTAMP),
+          updated_at text DEFAULT (CURRENT_TIMESTAMP)
+        );
+        
+        INSERT INTO lessons_new SELECT 
+          id, title, video_url, video_path, 
+          COALESCE(video_type, 'url'),
+          video_mime_type, video_size, video_summary, start_message,
+          video_transcript, transcript_extracted_at,
+          COALESCE(transcript_language, 'en'),
+          order_index, prerequisites, active, created_at, updated_at
+        FROM lessons;
+        
+        DROP TABLE lessons;
+        ALTER TABLE lessons_new RENAME TO lessons;
+      `);
+      console.log('[DB] Lessons table migration completed');
+    }
+  } catch (error) {
+    console.warn('[DB] Migration warning (non-fatal):', error);
+  }
+}
 
 // Create tables if they don't exist
 function createTables(sqlite: Database.Database) {
@@ -96,9 +159,16 @@ function createTables(sqlite: Database.Database) {
       CREATE TABLE IF NOT EXISTS lessons (
         id text PRIMARY KEY NOT NULL,
         title text NOT NULL,
-        video_url text NOT NULL,
+        video_url text,
+        video_path text,
+        video_type text NOT NULL DEFAULT 'url',
+        video_mime_type text,
+        video_size integer,
         video_summary text NOT NULL,
         start_message text,
+        video_transcript text,
+        transcript_extracted_at text,
+        transcript_language text DEFAULT 'en',
         order_index integer NOT NULL,
         prerequisites text,
         active integer DEFAULT true,
