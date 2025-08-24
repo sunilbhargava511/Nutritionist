@@ -686,6 +686,25 @@ export default function AdminPanel() {
         debugData.system.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       }
 
+      // Fetch LLM debug data
+      try {
+        const llmStatsResponse = await fetch('/api/debug-llm?action=stats');
+        if (llmStatsResponse.ok) {
+          const llmStatsData = await llmStatsResponse.json();
+          debugData.llmStats = llmStatsData.stats;
+        }
+
+        const recentEntriesResponse = await fetch('/api/debug-llm?action=entries&limit=10');
+        if (recentEntriesResponse.ok) {
+          const recentEntriesData = await recentEntriesResponse.json();
+          debugData.recentEntries = recentEntriesData.entries;
+        }
+      } catch (error) {
+        console.error('Failed to load LLM debug data:', error);
+        debugData.llmStats = { totalEntries: 0, currentSessionEntries: 0, totalSessions: 0 };
+        debugData.recentEntries = [];
+      }
+
       setDebugInfo(debugData);
     } catch (error) {
       console.error('Failed to load debug data:', error);
@@ -4162,6 +4181,152 @@ Affordable alternative to traditional nutrition counseling"
                     {debugInfo.sessions?.length || 0}
                   </p>
                 </div>
+              </div>
+
+              {/* LLM Debug Capture Section */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5" />
+                    LLM Debug Capture
+                  </h3>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="debugCaptureToggle"
+                        checked={settings?.debugLlmEnabled || false}
+                        onChange={async (e) => {
+                          try {
+                            const response = await fetch('/api/debug-llm', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                action: 'toggle',
+                                enabled: e.target.checked
+                              })
+                            });
+                            if (response.ok) {
+                              await loadData(); // Refresh settings
+                            }
+                          } catch (error) {
+                            console.error('Failed to toggle debug capture:', error);
+                          }
+                        }}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="debugCaptureToggle" className="ml-2 text-sm font-medium text-gray-900">
+                        Enable Capture
+                      </label>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await fetch('/api/debug-llm', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'clear' })
+                          });
+                          if (response.ok) {
+                            await loadDebugData();
+                          }
+                        } catch (error) {
+                          console.error('Failed to clear debug data:', error);
+                        }
+                      }}
+                      className="flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-sm transition-colors"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                {settings?.debugLlmEnabled ? (
+                  <div className="space-y-4">
+                    {/* Debug Statistics */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-blue-50 p-3 rounded border">
+                        <div className="text-2xl font-bold text-blue-900">
+                          {debugInfo.llmStats?.totalEntries || 0}
+                        </div>
+                        <div className="text-xs text-blue-600">Total Entries</div>
+                      </div>
+                      <div className="bg-green-50 p-3 rounded border">
+                        <div className="text-2xl font-bold text-green-900">
+                          {debugInfo.llmStats?.currentSessionEntries || 0}
+                        </div>
+                        <div className="text-xs text-green-600">Current Session</div>
+                      </div>
+                      <div className="bg-purple-50 p-3 rounded border">
+                        <div className="text-2xl font-bold text-purple-900">
+                          {debugInfo.llmStats?.totalSessions || 0}
+                        </div>
+                        <div className="text-xs text-purple-600">Debug Sessions</div>
+                      </div>
+                    </div>
+
+                    {/* Recent LLM Interactions */}
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">Recent LLM Interactions</h4>
+                      <div className="max-h-64 overflow-y-auto border border-gray-200 rounded">
+                        {debugInfo.recentEntries && debugInfo.recentEntries.length > 0 ? (
+                          <div className="divide-y divide-gray-100">
+                            {debugInfo.recentEntries.slice(0, 10).map((entry, index) => (
+                              <div key={entry.id || index} className="p-3 hover:bg-gray-50">
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${
+                                      entry.status === 'success' ? 'bg-green-500' :
+                                      entry.status === 'error' ? 'bg-red-500' : 'bg-yellow-500'
+                                    }`}></span>
+                                    <span className="text-xs font-medium text-gray-600 uppercase">
+                                      {entry.type}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      {entry.request?.model || 'unknown'}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-gray-400">
+                                    {new Date(entry.timestamp).toLocaleTimeString()}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-gray-600 truncate mb-1">
+                                  {entry.request?.systemPrompt?.substring(0, 80)}...
+                                </div>
+                                {entry.status === 'success' && entry.response && (
+                                  <div className="text-xs text-gray-500">
+                                    Response: {entry.response.content?.substring(0, 60)}...
+                                    {entry.response.processingTime && (
+                                      <span className="ml-2 text-blue-600">
+                                        ({entry.response.processingTime}ms)
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {entry.status === 'error' && entry.error && (
+                                  <div className="text-xs text-red-600">
+                                    Error: {entry.error}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-6 text-center text-gray-500 text-sm">
+                            No debug entries captured yet. LLM interactions will appear here when debug capture is enabled.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                    <p className="mb-2">LLM Debug Capture is disabled</p>
+                    <p className="text-sm">Enable it to monitor AI interactions in real-time</p>
+                  </div>
+                )}
               </div>
 
               {/* System Information */}

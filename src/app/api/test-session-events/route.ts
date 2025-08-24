@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { debugDatabaseService } from '@/lib/debug-database-service';
-import { sessionEventService } from '@/lib/session-event-service';
 import { initializeDatabase } from '@/lib/database';
 
 // Initialize database on first API call
@@ -13,84 +12,66 @@ async function ensureDatabase() {
   }
 }
 
+export async function GET() {
+  try {
+    await ensureDatabase();
+    
+    // Get recent session events for testing
+    const events = await debugDatabaseService.getSessionEvents();
+    const allEvents = await debugDatabaseService.getAllSessionEvents(20);
+    
+    return NextResponse.json({
+      success: true,
+      currentSessionEvents: events.length,
+      allSessionEvents: allEvents.length,
+      events: events.slice(0, 5), // Return first 5 for preview
+      allEvents: allEvents.slice(0, 10), // Return first 10 for preview
+      message: 'Session events test completed successfully'
+    });
+  } catch (error) {
+    console.error('Session events test error:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to test session events',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     await ensureDatabase();
     
-    const { action } = await request.json();
-
+    const { action, eventData } = await request.json();
+    
     switch (action) {
-      case 'create-test-events':
-        // Set a test session
-        const sessionId = `test_session_${Date.now()}`;
-        sessionEventService.setCurrentSession(sessionId);
-
-        // Create session started event
-        const sessionEvent = sessionEventService.createSessionStartedEvent({
-          userId: 'test_user',
-          userAgent: 'Test Browser',
-          timezone: 'America/New_York'
-        });
-
-        // Create ElevenLabs conversation event
-        const voiceEvent = sessionEventService.createElevenLabsConversationEvent({
-          agentId: 'agent_test_123',
-          conversationId: 'conv_test_456',
-          voiceSettings: {
-            voiceId: 'test_voice',
-            stability: 0.75,
-            similarityBoost: 0.85,
-            style: 0.5
-          }
-        });
-
-        // Create lesson started event
-        const lessonEvent = sessionEventService.createLessonStartedEvent({
-          lessonId: 'lesson_test_123',
-          lessonTitle: 'Emergency Fund Basics',
-          lessonProgress: '1/5 sections',
-          difficulty: 'beginner',
-          estimatedDuration: 15
-        });
-
-        // Create lesson Q&A event
-        const qaEvent = sessionEventService.createLessonQAEvent({
-          parentLessonId: 'lesson_test_123',
-          availableQuestions: 5,
-          questionTypes: ['multiple-choice', 'short-answer']
-        });
-
-        // Create open conversation event
-        const chatEvent = sessionEventService.createOpenConversationEvent({
-          conversationContext: 'User wants to discuss budgeting',
-          detectedIntent: 'budget_planning',
-          userMood: 'curious'
-        });
-
-        const allEvents = [sessionEvent, voiceEvent, lessonEvent, qaEvent, chatEvent];
+      case 'create-test-event':
+        // Create a test session event
+        const testEvent = {
+          id: `test_event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: eventData?.type || 'test',
+          title: eventData?.title || 'Test Session Event',
+          summary: eventData?.summary || 'This is a test session event for debugging',
+          timestamp: new Date(),
+          metadata: {
+            sessionId: `test_session_${Date.now()}`,
+            source: 'test-api',
+            ...eventData?.metadata
+          },
+          firstMessage: eventData?.firstMessage || 'Test first message',
+          status: eventData?.status || 'active',
+          icon: eventData?.icon || 'test'
+        };
         
-        // Add events to debug database
-        for (const event of allEvents) {
-          await debugDatabaseService.addSessionEvent(event);
-        }
-
+        await debugDatabaseService.addSessionEvent(testEvent);
+        
         return NextResponse.json({
           success: true,
-          message: `Created ${allEvents.length} test events`,
-          events: allEvents.map(e => ({
-            id: e.id,
-            type: e.type,
-            title: e.title,
-            summary: e.summary,
-            timestamp: e.timestamp
-          }))
-        });
-
-      case 'clear-events':
-        sessionEventService.clearAllEvents();
-        return NextResponse.json({
-          success: true,
-          message: 'All events cleared'
+          event: testEvent,
+          message: 'Test session event created successfully'
         });
 
       default:
@@ -100,11 +81,11 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (error) {
-    console.error('Test session events API error:', error);
+    console.error('Session events test POST error:', error);
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Failed to process request',
+        error: 'Failed to process session events test',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }

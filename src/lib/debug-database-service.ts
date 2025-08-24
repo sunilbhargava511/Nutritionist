@@ -44,6 +44,7 @@ export class DebugDatabaseService {
   private lastCacheUpdate: number = 0;
   private readonly CACHE_TTL = 30000; // 30 seconds cache
   private currentSessionId: string | null = null;
+  private sessionEventQueue: any[] = []; // Queue for session events
 
   private constructor() {
     // Initialize and load settings from database
@@ -512,7 +513,7 @@ export class DebugDatabaseService {
 
       const events = await query.orderBy(desc(schema.sessionEvents.timestamp));
 
-      return events.map(this.convertDatabaseSessionEvent);
+      return events.map(event => this.convertDatabaseSessionEvent(event));
     } catch (error) {
       console.error('[Debug DB] Failed to get session events:', error);
       return [];
@@ -535,7 +536,7 @@ export class DebugDatabaseService {
         .orderBy(desc(schema.sessionEvents.timestamp))
         .limit(limit);
 
-      return events.map(this.convertDatabaseSessionEvent);
+      return events.map(event => this.convertDatabaseSessionEvent(event));
     } catch (error) {
       console.error('[Debug DB] Failed to get all session events:', error);
       return [];
@@ -561,46 +562,127 @@ export class DebugDatabaseService {
     }
   }
 
-  // Convert database session event to our format
-  private convertDatabaseSessionEvent(dbEvent: any): SessionEvent {
-    return {
-      id: dbEvent.id,
-      type: dbEvent.eventType,
-      title: dbEvent.title,
-      summary: dbEvent.summary,
-      timestamp: new Date(dbEvent.timestamp),
-      metadata: dbEvent.metadata ? JSON.parse(dbEvent.metadata) : {},
-      firstMessage: dbEvent.firstMessage,
-      status: dbEvent.status,
-      icon: dbEvent.icon
-    };
+  // Enhanced data sanitization methods
+  private sanitizeString(input: any): string {
+    if (typeof input === 'string') return input;
+    if (input === null || input === undefined) return '';
+    try {
+      return String(input);
+    } catch {
+      return '';
+    }
   }
 
-  // Convert database entry to our format
+  private sanitizeJSON(input: any): any {
+    if (!input) return null;
+    try {
+      if (typeof input === 'string') {
+        return JSON.parse(input);
+      }
+      return input;
+    } catch (error) {
+      console.warn('[Debug DB] Failed to parse JSON, returning raw data:', error);
+      return input;
+    }
+  }
+
+  private sanitizeArticles(articles: any): Article[] {
+    if (!Array.isArray(articles)) return [];
+    
+    return articles.map(article => ({
+      id: this.sanitizeString(article?.id || ''),
+      title: this.sanitizeString(article?.title || ''),
+      content: this.sanitizeString(article?.content || ''),
+      category: this.sanitizeString(article?.category || ''),
+      summary: this.sanitizeString(article?.summary || ''),
+      keyTopics: Array.isArray(article?.keyTopics) ? article.keyTopics : []
+    }));
+  }
+
+  // Convert database session event to our format with enhanced error handling
+  private convertDatabaseSessionEvent(dbEvent: any): SessionEvent {
+    try {
+      return {
+        id: this.sanitizeString(dbEvent.id),
+        type: this.sanitizeString(dbEvent.eventType),
+        title: this.sanitizeString(dbEvent.title),
+        summary: this.sanitizeString(dbEvent.summary),
+        timestamp: new Date(dbEvent.timestamp),
+        metadata: this.sanitizeJSON(dbEvent.metadata) || {},
+        firstMessage: this.sanitizeString(dbEvent.firstMessage),
+        status: dbEvent.status || 'active',
+        icon: this.sanitizeString(dbEvent.icon)
+      };
+    } catch (error) {
+      console.error('[Debug DB] Error converting session event:', error);
+      return {
+        id: 'error',
+        type: 'error',
+        title: 'Error parsing event',
+        summary: 'Failed to parse session event data',
+        timestamp: new Date(),
+        metadata: {},
+        firstMessage: '',
+        status: 'interrupted',
+        icon: 'error'
+      };
+    }
+  }
+
+  // Convert database entry to our format with enhanced error handling
   private convertDatabaseEntry(dbEntry: any): DatabaseDebugEntry {
-    return {
-      id: dbEntry.id,
-      sessionId: dbEntry.sessionId,
-      timestamp: new Date(dbEntry.timestamp),
-      type: dbEntry.type,
-      status: dbEntry.status,
-      request: {
-        systemPrompt: dbEntry.requestSystemPrompt || '',
-        messages: dbEntry.requestMessages ? JSON.parse(dbEntry.requestMessages) : [],
-        temperature: dbEntry.requestTemperature,
-        maxTokens: dbEntry.requestMaxTokens,
-        model: dbEntry.requestModel,
-        knowledgeContext: dbEntry.requestKnowledgeContext,
-        otherParameters: dbEntry.requestOtherParams ? JSON.parse(dbEntry.requestOtherParams) : undefined
-      },
-      response: {
-        content: dbEntry.responseContent || '',
-        processingTime: dbEntry.responseProcessingTime || 0,
-        usage: dbEntry.responseTokens ? { tokens: dbEntry.responseTokens } : undefined,
-        citedArticles: dbEntry.responseCitedArticles ? JSON.parse(dbEntry.responseCitedArticles) : undefined
-      },
-      error: dbEntry.errorMessage
-    };
+    try {
+      const messages = this.sanitizeJSON(dbEntry.requestMessages) || [];
+      const otherParameters = this.sanitizeJSON(dbEntry.requestOtherParams);
+      const citedArticles = this.sanitizeJSON(dbEntry.responseCitedArticles);
+
+      return {
+        id: this.sanitizeString(dbEntry.id),
+        sessionId: this.sanitizeString(dbEntry.sessionId),
+        timestamp: new Date(dbEntry.timestamp || Date.now()),
+        type: dbEntry.type || 'claude',
+        status: dbEntry.status || 'pending',
+        request: {
+          systemPrompt: this.sanitizeString(dbEntry.requestSystemPrompt),
+          messages: Array.isArray(messages) ? messages : [],
+          temperature: dbEntry.requestTemperature,
+          maxTokens: dbEntry.requestMaxTokens,
+          model: this.sanitizeString(dbEntry.requestModel),
+          knowledgeContext: this.sanitizeString(dbEntry.requestKnowledgeContext),
+          otherParameters: otherParameters || undefined
+        },
+        response: {
+          content: this.sanitizeString(dbEntry.responseContent),
+          processingTime: dbEntry.responseProcessingTime || 0,
+          usage: dbEntry.responseTokens ? { tokens: dbEntry.responseTokens } : undefined,
+          citedArticles: citedArticles ? this.sanitizeArticles(citedArticles) : undefined
+        },
+        error: this.sanitizeString(dbEntry.errorMessage)
+      };
+    } catch (error) {
+      console.error('[Debug DB] Error converting debug entry:', error);
+      return {
+        id: 'error',
+        sessionId: 'error',
+        timestamp: new Date(),
+        type: 'claude',
+        status: 'error',
+        request: {
+          systemPrompt: '',
+          messages: [],
+          model: 'unknown',
+          knowledgeContext: '',
+          otherParameters: undefined
+        },
+        response: {
+          content: 'Error parsing debug entry',
+          processingTime: 0,
+          usage: undefined,
+          citedArticles: undefined
+        },
+        error: 'Failed to parse debug entry data'
+      };
+    }
   }
 }
 
