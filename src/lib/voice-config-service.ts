@@ -29,7 +29,7 @@ export class VoiceConfigService {
 
   // Fallback voice configuration - only used if admin settings are unavailable
   private readonly FALLBACK_CONFIG: VoiceConfig = {
-    voiceId: 'pNInz6obpgDQGcFmaJgB', // Adam voice (ElevenLabs default)
+    voiceId: '4n2FYtLoSkOUG7xRbnu9', // User requested voice ID
     description: 'Professional voice',
     stability: 0.6,
     similarityBoost: 0.8,
@@ -76,10 +76,12 @@ export class VoiceConfigService {
           };
         } else {
           console.warn('No admin settings found, using fallback voice configuration');
+          console.log('🎙️ Using default voice ID: 4n2FYtLoSkOUG7xRbnu9');
           this.cachedConfig = { ...this.FALLBACK_CONFIG };
         }
       } else {
         console.warn('Failed to fetch admin settings, using fallback voice configuration');
+        console.log('🎙️ Using default voice ID: 4n2FYtLoSkOUG7xRbnu9');
         this.cachedConfig = { ...this.FALLBACK_CONFIG };
       }
 

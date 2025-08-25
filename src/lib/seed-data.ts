@@ -63,8 +63,8 @@ export async function createSampleAdminSettings(): Promise<void> {
     }
 
     await adminService.updateAdminSettings({
-      voiceId: 'pNInz6obpgDQGcFmaJgB', // Adam voice as default
-      voiceDescription: 'Professional, warm voice suitable for financial education',
+      voiceId: '4n2FYtLoSkOUG7xRbnu9', // User requested voice ID
+      voiceDescription: 'Professional, warm voice suitable for nutrition education',
       personalizationEnabled: false, // Start with basic mode
     });
     

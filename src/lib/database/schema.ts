@@ -59,8 +59,8 @@ export const conversationStyle = sqliteTable('conversation_style', {
 // Administrator settings
 export const adminSettings = sqliteTable('admin_settings', {
   id: text('id').primaryKey().default('default'),
-  voiceId: text('voice_id').notNull().default('pNInz6obpgDQGcFmaJgB'),
-  voiceDescription: text('voice_description').notNull().default('Professional, clear voice for financial education'),
+  voiceId: text('voice_id').notNull().default('4n2FYtLoSkOUG7xRbnu9'),
+  voiceDescription: text('voice_description').notNull().default('Professional, clear voice for nutrition education'),
   personalizationEnabled: integer('personalization_enabled', { mode: 'boolean' }).default(false),
   conversationAware: integer('conversation_aware', { mode: 'boolean' }).default(true), // Enable smooth lead-ins by default
   useStructuredConversation: integer('use_structured_conversation', { mode: 'boolean' }).default(true),

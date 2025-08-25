@@ -351,8 +351,8 @@ export async function initializeDatabase() {
     if (existingSettings.length === 0) {
       await getDB().insert(schema.adminSettings).values({
         id: 'default',
-        voiceId: 'pNInz6obpgDQGcFmaJgB', // Adam voice from ElevenLabs
-        voiceDescription: 'Professional, clear voice for financial education',
+        voiceId: '4n2FYtLoSkOUG7xRbnu9', // User requested voice ID
+        voiceDescription: 'Professional, clear voice for nutrition education',
         personalizationEnabled: false,
         conversationAware: true, // Enable smooth lead-ins by default
         useStructuredConversation: true,
