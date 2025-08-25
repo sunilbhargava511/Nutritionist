@@ -76,6 +76,10 @@ export default function AdminPanel() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
+  // Voice settings controlled state
+  const [voiceId, setVoiceId] = useState<string>('');
+  const [voiceDescription, setVoiceDescription] = useState<string>('');
+  
   // Get voice settings from centralized config
   const { voiceSettings } = useElevenLabsVoiceSettings();
   
@@ -304,29 +308,19 @@ export default function AdminPanel() {
     setError(null);
     
     try {
-      // Get voice settings from the form inputs using a more robust selector
-      const buttonElement = event.target as HTMLButtonElement;
-      const container = buttonElement.closest('.border-t.border-purple-200') || 
-                       buttonElement.closest('div');
-      
-      // Look for the voice inputs within the container
-      const voiceIdInput = document.querySelector('input[name="voiceId"]') as HTMLInputElement;
-      const voiceDescInput = document.querySelector('textarea[name="voiceDescription"]') as HTMLTextAreaElement;
-      
-      console.log('Voice ID input found:', !!voiceIdInput);
-      console.log('Voice ID value:', voiceIdInput?.value);
-      console.log('Voice Description input found:', !!voiceDescInput);
+      console.log('🎙️ Starting voice settings save...');
+      console.log('Current voice state:', { voiceId, voiceDescription });
       
       // Save conversation style first
       const styleSuccess = await saveConversationStyle(contentPersona, personaGender, customPerson);
       
-      // Save voice settings
+      // Save voice settings using state values (no DOM queries needed!)
       const voiceUpdates = {
-        voiceId: voiceIdInput?.value || settings?.voiceId || '',
-        voiceDescription: voiceDescInput?.value || settings?.voiceDescription || '',
+        voiceId: voiceId.trim() || '4n2FYtLoSkOUG7xRbnu9', // Fallback to user's preferred voice
+        voiceDescription: voiceDescription.trim() || 'Professional, clear voice for nutrition education',
       };
       
-      console.log('Saving voice updates:', voiceUpdates);
+      console.log('🚀 Saving voice updates:', voiceUpdates);
       
       const response = await fetch('/api/admin/settings', {
         method: 'PUT',
@@ -338,19 +332,22 @@ export default function AdminPanel() {
       
       if (!voiceSuccess) {
         const errorData = await response.json();
-        console.error('Voice settings save failed:', errorData);
+        console.error('❌ Voice settings save failed:', errorData);
+        throw new Error(`API error: ${errorData.error || 'Unknown error'}`);
       }
       
+      console.log('✅ Voice settings saved successfully');
+      
       if (styleSuccess && voiceSuccess) {
-        await loadData();
-        showSuccess('Style and voice settings saved successfully!');
+        await loadData(); // This will refresh the voice state with saved values
+        showSuccess(`Style and voice settings saved! Now using voice ID: ${voiceUpdates.voiceId}`);
       } else {
         throw new Error('Some settings failed to save');
       }
       
     } catch (error) {
       console.error('Error saving style and voice settings:', error);
-      setError('Failed to save style and voice settings');
+      setError(`Failed to save settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -773,6 +770,16 @@ export default function AdminPanel() {
       if (settingsRes.ok) {
         const settingsData = await settingsRes.json();
         setSettings(settingsData.settings);
+        
+        // Sync voice state with loaded settings
+        if (settingsData.settings) {
+          setVoiceId(settingsData.settings.voiceId || '');
+          setVoiceDescription(settingsData.settings.voiceDescription || '');
+          console.log('Voice settings loaded:', {
+            voiceId: settingsData.settings.voiceId,
+            voiceDescription: settingsData.settings.voiceDescription
+          });
+        }
       }
 
       if (promptsRes.ok) {
@@ -2497,13 +2504,24 @@ Affordable alternative to traditional nutrition counseling"
                       <input
                         type="text"
                         name="voiceId"
-                        defaultValue={settings?.voiceId || ''}
+                        value={voiceId}
+                        onChange={(e) => setVoiceId(e.target.value)}
                         className="w-full px-3 py-2 border border-purple-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
-                        placeholder="e.g., pNInz6obpgDQGcFmaJgB"
+                        placeholder="e.g., 4n2FYtLoSkOUG7xRbnu9"
                       />
                       <p className="mt-1 text-xs text-purple-600">
                         The ElevenLabs voice ID to use for all audio generation
+                        {voiceId && voiceId !== settings?.voiceId && (
+                          <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                            ⚠️ Unsaved changes
+                          </span>
+                        )}
                       </p>
+                      {voiceId && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Current: <code className="bg-gray-100 px-1 rounded">{voiceId}</code>
+                        </p>
+                      )}
                     </div>
                     
                     <div>
@@ -2513,9 +2531,10 @@ Affordable alternative to traditional nutrition counseling"
                       <textarea
                         name="voiceDescription"
                         rows={2}
-                        defaultValue={settings?.voiceDescription || ''}
+                        value={voiceDescription}
+                        onChange={(e) => setVoiceDescription(e.target.value)}
                         className="w-full px-3 py-2 border border-purple-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
-                        placeholder="e.g., Make voice deeper and slower, less nasal"
+                        placeholder="e.g., Professional, clear voice for nutrition education"
                       />
                     </div>
                   </div>
