@@ -22,8 +22,9 @@ export default function TTSPlayer({
   className = ''
 }: TTSPlayerProps) {
   
-  // Get voice settings from centralized config with error handling
-  const { voiceSettings, isLoading: voiceLoading, error: voiceError } = useElevenLabsVoiceSettings();
+  // Get voice settings from centralized config
+  // Don't expose voiceError to prevent showing errors before user interaction
+  const { voiceSettings, isLoading: voiceLoading } = useElevenLabsVoiceSettings();
   
   // Debug logging - log props on every render
   console.log('[TTSPlayer] Render with props:', {
@@ -49,10 +50,8 @@ export default function TTSPlayer({
 
     // Check voice configuration before generating
     if (!voiceSettings) {
-      const errorMsg = voiceError 
-        ? `Voice configuration error: ${voiceError}` 
-        : 'Voice settings not available. Please check admin configuration.';
-      console.error('[TTSPlayer] Voice configuration required:', errorMsg);
+      const errorMsg = 'Voice settings not available. Please check admin configuration.';
+      console.error('[TTSPlayer] Voice configuration required: voiceSettings is null');
       setError(errorMsg);
       onError?.(errorMsg);
       return;

@@ -43,8 +43,9 @@ export default function ConversationalAI({
   const [isConnecting, setIsConnecting] = useState(false);
   const [hasAutoStarted, setHasAutoStarted] = useState(false);
   
-  // Get voice ID from centralized config with error handling
-  const { voiceId, isLoading: voiceLoading, error: voiceError } = useVoiceId();
+  // Get voice ID from centralized config
+  // Don't expose voiceError to prevent showing errors before user interaction
+  const { voiceId, isLoading: voiceLoading } = useVoiceId();
   
   // Refs for conversation management
   const streamRef = useRef<MediaStream | null>(null);
@@ -189,10 +190,8 @@ export default function ConversationalAI({
 
     // Check voice configuration before starting
     if (!voiceId) {
-      const errorMsg = voiceError 
-        ? `Voice configuration error: ${voiceError}` 
-        : 'Voice ID not loaded. Please check admin settings.';
-      console.error('[Enhanced ConversationalAI] Voice configuration required:', errorMsg);
+      const errorMsg = 'Voice configuration not available. Please check admin settings or try again.';
+      console.error('[Enhanced ConversationalAI] Voice configuration required: voiceId is null');
       setError(errorMsg);
       return;
     }
@@ -244,7 +243,7 @@ export default function ConversationalAI({
     } finally {
       setIsConnecting(false);
     }
-  }, [conversation, isConnecting, connectionStatus, requestMicrophonePermission, updateStatus, handleError, getSessionOpeningMessage, skipOpeningMessage, voiceId, voiceError]);
+  }, [conversation, isConnecting, connectionStatus, requestMicrophonePermission, updateStatus, handleError, getSessionOpeningMessage, skipOpeningMessage, voiceId]);
 
   // End conversation
   const endConversation = useCallback(async () => {

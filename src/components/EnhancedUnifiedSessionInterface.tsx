@@ -62,8 +62,9 @@ export default function EnhancedUnifiedSessionInterface() {
   const [error, setError] = useState<string | null>(null);
   const [isVideoCompleted, setIsVideoCompleted] = useState(false);
   
-  // Get voice settings from centralized config with error handling
-  const { voiceSettings, error: voiceError } = useElevenLabsVoiceSettings();
+  // Get voice settings from centralized config
+  // Don't expose voiceError to prevent showing errors before user interaction
+  const { voiceSettings } = useElevenLabsVoiceSettings();
   
   // Lesson intro TTS state
   const [lessonPhase, setLessonPhase] = useState<'intro' | 'video' | 'qa'>('intro');
@@ -463,10 +464,8 @@ export default function EnhancedUnifiedSessionInterface() {
                         console.log('ElevenLabs TTS Test button clicked');
                         
                         if (!voiceSettings) {
-                          const errorMsg = voiceError 
-                            ? `Voice configuration error: ${voiceError}` 
-                            : 'Voice settings not available. Please check admin configuration.';
-                          console.error('[TTS Test] Voice configuration required:', errorMsg);
+                          const errorMsg = 'Voice settings not available. Please check admin configuration.';
+                          console.error('[TTS Test] Voice configuration required: voiceSettings is null');
                           alert(errorMsg);
                           return;
                         }

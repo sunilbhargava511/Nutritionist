@@ -42,47 +42,82 @@ export class VoiceConfigService {
   }
 
   /**
-   * Get voice configuration from admin settings with caching
+   * Get voice configuration from admin settings with caching and retry logic
    */
   async getVoiceConfig(): Promise<VoiceConfig> {
     // Check cache first
     if (this.cachedConfig && (Date.now() - this.cacheTimestamp) < this.CACHE_DURATION) {
+      console.log('🎯 Voice config: Using cached configuration');
       return this.cachedConfig;
     }
 
-    try {
-      // Use API call instead of direct database access for client compatibility
-      const response = await fetch('/api/admin/settings');
-      
-      if (response.ok) {
-        const data = await response.json();
-        const adminSettings = data.success ? data.settings : null;
+    console.log('🔄 Voice config: Loading from API...');
+    
+    // Retry logic for transient network issues
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1 second
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🌐 Voice config: API request attempt ${attempt}/${maxRetries}`);
         
-        if (adminSettings) {
-          this.cachedConfig = {
-            voiceId: adminSettings.voiceId,
-            description: adminSettings.voiceDescription,
-            stability: 0.6, // Default stability
-            similarityBoost: 0.8, // Default similarity boost
-            style: 0.4, // Default style
-            useSpeakerBoost: true // Default speaker boost
-          };
+        // Use API call instead of direct database access for client compatibility
+        const response = await fetch('/api/admin/settings', {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          // Add timeout to prevent hanging requests
+          signal: AbortSignal.timeout(10000) // 10 second timeout
+        });
+        
+        console.log(`📡 Voice config: API response status: ${response.status}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Voice config: API response received:', { success: data.success, hasSettings: !!data.settings });
+          
+          const adminSettings = data.success ? data.settings : null;
+          
+          if (adminSettings && adminSettings.voiceId) {
+            this.cachedConfig = {
+              voiceId: adminSettings.voiceId,
+              description: adminSettings.voiceDescription || 'Professional voice',
+              stability: 0.6, // Default stability
+              similarityBoost: 0.8, // Default similarity boost
+              style: 0.4, // Default style
+              useSpeakerBoost: true // Default speaker boost
+            };
+            
+            this.cacheTimestamp = Date.now();
+            console.log('🎉 Voice config: Successfully loaded voice ID:', this.cachedConfig.voiceId);
+            return this.cachedConfig;
+          } else {
+            console.error('❌ Voice config: No valid admin settings or voice ID found in response');
+            throw new Error('Voice configuration not found. Please configure voice settings in the admin panel.');
+          }
         } else {
-          console.error('❌ CRITICAL ERROR: No admin settings found in database');
-          throw new Error('Voice configuration not found. Please configure voice settings in the admin panel.');
+          const errorText = await response.text().catch(() => 'Unknown error');
+          console.error(`❌ Voice config: API request failed with status ${response.status}:`, errorText);
+          throw new Error(`Failed to load voice configuration (${response.status}). Please check your connection.`);
         }
-      } else {
-        console.error('❌ CRITICAL ERROR: Failed to fetch admin settings from API');
-        throw new Error('Failed to load voice configuration. Please check your database connection and admin settings.');
+      } catch (error) {
+        console.error(`❌ Voice config: Attempt ${attempt}/${maxRetries} failed:`, error);
+        
+        // If this is the last attempt, throw the error
+        if (attempt === maxRetries) {
+          throw error instanceof Error ? error : new Error('Unknown error loading voice configuration');
+        }
+        
+        // Wait before retrying (except for the last attempt)
+        console.log(`⏳ Voice config: Retrying in ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
       }
-
-      this.cacheTimestamp = Date.now();
-      return this.cachedConfig;
-    } catch (error) {
-      console.error('❌ Failed to load voice configuration:', error);
-      // Re-throw the error - no fallback allowed
-      throw error instanceof Error ? error : new Error('Unknown error loading voice configuration');
     }
+    
+    // This should never be reached, but TypeScript requires it
+    throw new Error('Failed to load voice configuration after all retry attempts');
   }
 
   /**

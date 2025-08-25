@@ -38,7 +38,8 @@ export default function ConversationalAI({
   const [hasAutoStarted, setHasAutoStarted] = useState(false);
   
   // Get voice ID from centralized config
-  const { voiceId, isLoading: voiceLoading, error: voiceError } = useVoiceId();
+  // Don't expose voiceError to prevent showing errors before user interaction
+  const { voiceId, isLoading: voiceLoading } = useVoiceId();
   
   // Refs for conversation management
   const streamRef = useRef<MediaStream | null>(null);
@@ -243,10 +244,8 @@ export default function ConversationalAI({
   const startConversation = useCallback(async () => {
     // Check voice configuration before starting
     if (!voiceId) {
-      const errorMsg = voiceError 
-        ? `Voice configuration error: ${voiceError}` 
-        : 'Voice ID not loaded. Please check admin settings.';
-      console.error('[Real FTherapy] Voice configuration required:', errorMsg);
+      const errorMsg = 'Voice configuration not available. Please check admin settings or try again.';
+      console.error('[Real FTherapy] Voice configuration required: voiceId is null');
       setError(errorMsg);
       return;
     }
@@ -379,7 +378,7 @@ export default function ConversationalAI({
     } finally {
       setIsConnecting(false);
     }
-  }, [conversation, isConnecting, connectionStatus, requestMicrophonePermission, updateStatus, handleError, onMessage, generateWelcomeMessage, initializeSession, voiceId, voiceError]);
+  }, [conversation, isConnecting, connectionStatus, requestMicrophonePermission, updateStatus, handleError, onMessage, generateWelcomeMessage, initializeSession, voiceId]);
 
   // End conversation using Real FTherapy pattern
   const endConversation = useCallback(async () => {
