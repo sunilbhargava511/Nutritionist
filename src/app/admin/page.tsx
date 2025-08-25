@@ -3927,7 +3927,7 @@ Affordable alternative to traditional nutrition counseling"
                               stability: voiceSettings.stability,
                               similarityBoost: voiceSettings.similarity_boost
                             } : {
-                              voiceId: 'pNInz6obpgDQGcFmaJgB',
+                              voiceId: '4n2FYtLoSkOUG7xRbnu9',
                               speed: 0.85,
                               stability: 0.6,
                               similarityBoost: 0.8
@@ -4017,7 +4017,7 @@ Affordable alternative to traditional nutrition counseling"
                                         stability: voiceSettings.stability,
                                         similarityBoost: voiceSettings.similarity_boost
                                       } : {
-                                        voiceId: 'pNInz6obpgDQGcFmaJgB',
+                                        voiceId: '4n2FYtLoSkOUG7xRbnu9',
                                         speed: 0.85,
                                         stability: 0.6,
                                         similarityBoost: 0.8
@@ -4073,7 +4073,7 @@ Affordable alternative to traditional nutrition counseling"
                                       stability: voiceSettings.stability,
                                       similarityBoost: voiceSettings.similarity_boost
                                     } : {
-                                      voiceId: 'pNInz6obpgDQGcFmaJgB',
+                                      voiceId: '4n2FYtLoSkOUG7xRbnu9',
                                       speed: 0.85,
                                       stability: 0.6,
                                       similarityBoost: 0.8

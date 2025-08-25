@@ -330,7 +330,7 @@ export class OpeningMessageService {
       console.warn('Failed to get voice config, using fallback:', error);
       // Fallback to default settings
       return {
-        voiceId: 'pNInz6obpgDQGcFmaJgB',
+        voiceId: '4n2FYtLoSkOUG7xRbnu9',
         speed: 1.0,
         stability: 0.5,
         similarityBoost: 0.75,

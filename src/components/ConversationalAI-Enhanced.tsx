@@ -213,7 +213,7 @@ export default function ConversationalAI({
             interruptible: true
           },
           tts: {
-            voiceId: voiceId || 'pNInz6obpgDQGcFmaJgB',
+            voiceId: voiceId || '4n2FYtLoSkOUG7xRbnu9',
             stability: 0.6,
             similarity_boost: 0.8,
             style: 0.4,

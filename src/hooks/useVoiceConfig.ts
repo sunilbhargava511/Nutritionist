@@ -31,8 +31,8 @@ export function useVoiceConfig(): UseVoiceConfigResult {
       
       // Use fallback config on error
       setVoiceConfig({
-        voiceId: 'pNInz6obpgDQGcFmaJgB',
-        description: 'Fallback voice',
+        voiceId: '4n2FYtLoSkOUG7xRbnu9',
+        description: 'Fallback female voice',
         stability: 0.6,
         similarityBoost: 0.8,
         style: 0.4,

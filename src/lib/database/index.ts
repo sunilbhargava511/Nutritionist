@@ -142,7 +142,7 @@ function createTables(sqlite: Database.Database) {
     sqlite.exec(`
       CREATE TABLE IF NOT EXISTS admin_settings (
         id text PRIMARY KEY DEFAULT 'default' NOT NULL,
-        voice_id text DEFAULT 'pNInz6obpgDQGcFmaJgB' NOT NULL,
+        voice_id text DEFAULT '4n2FYtLoSkOUG7xRbnu9' NOT NULL,
         voice_description text DEFAULT 'Professional, clear voice for nutrition education' NOT NULL,
         personalization_enabled integer DEFAULT false,
         conversation_aware integer DEFAULT true,

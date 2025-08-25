@@ -28,7 +28,7 @@ export class AdminService {
       // Create new settings if none exist
       await getDB().insert(schema.adminSettings).values({
         id: 'default',
-        voiceId: updates.voiceId || 'pNInz6obpgDQGcFmaJgB',
+        voiceId: updates.voiceId || '4n2FYtLoSkOUG7xRbnu9',
         voiceDescription: updates.voiceDescription || 'Professional voice',
         personalizationEnabled: updates.personalizationEnabled || false,
         conversationAware: updates.conversationAware !== undefined ? updates.conversationAware : true,
