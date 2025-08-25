@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { voiceConfigService } from '@/lib/voice-config-service';
+import { adminService } from '@/lib/admin-service';
+import { initializeDatabase } from '@/lib/database';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,8 +21,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get voice settings from centralized config
-    const defaultVoiceSettings = await voiceConfigService.getElevenLabsVoiceSettings();
+    // Ensure database is initialized
+    await initializeDatabase();
+    
+    // Get voice settings from admin service directly (server-side)
+    const adminSettings = await adminService.getAdminSettings();
+    if (!adminSettings) {
+      return NextResponse.json(
+        { error: 'Voice configuration not found. Please configure voice settings in admin panel.' },
+        { status: 500 }
+      );
+    }
+    
+    const defaultVoiceSettings = {
+      voiceId: adminSettings.voiceId,
+      stability: 0.6,
+      similarity_boost: 0.8,
+      style: 0.4,
+      use_speaker_boost: true
+    };
+    
     const finalVoiceSettings = { ...defaultVoiceSettings, ...voiceSettings };
 
     // Generate TTS using ElevenLabs API

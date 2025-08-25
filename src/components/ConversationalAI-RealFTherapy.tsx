@@ -38,7 +38,7 @@ export default function ConversationalAI({
   const [hasAutoStarted, setHasAutoStarted] = useState(false);
   
   // Get voice ID from centralized config
-  const { voiceId } = useVoiceId();
+  const { voiceId, isLoading: voiceLoading, error: voiceError } = useVoiceId();
   
   // Refs for conversation management
   const streamRef = useRef<MediaStream | null>(null);
@@ -241,11 +241,22 @@ export default function ConversationalAI({
 
   // Real FTherapy Pattern: Start conversation using useConversation hook
   const startConversation = useCallback(async () => {
+    // Check voice configuration before starting
+    if (!voiceId) {
+      const errorMsg = voiceError 
+        ? `Voice configuration error: ${voiceError}` 
+        : 'Voice ID not loaded. Please check admin settings.';
+      console.error('[Real FTherapy] Voice configuration required:', errorMsg);
+      setError(errorMsg);
+      return;
+    }
+
     if (isConnecting || connectionStatus === 'connected') {
       console.log('[Real FTherapy] Already connecting or connected');
       return;
     }
 
+    console.log('[Real FTherapy] Starting conversation with voice ID:', voiceId);
     setIsConnecting(true);
     setError(null);
 
@@ -329,7 +340,7 @@ export default function ConversationalAI({
             interruptible: false
           },
           tts: {
-            voiceId: voiceId || (() => { throw new Error('Voice ID is required - no fallback allowed'); })(),
+            voiceId: voiceId!, // We validated voiceId exists before reaching this point
             stability: 0.6,
             similarity_boost: 0.8,
             style: 0.4,
@@ -368,7 +379,7 @@ export default function ConversationalAI({
     } finally {
       setIsConnecting(false);
     }
-  }, [conversation, isConnecting, connectionStatus, requestMicrophonePermission, updateStatus, handleError, onMessage, generateWelcomeMessage, initializeSession]);
+  }, [conversation, isConnecting, connectionStatus, requestMicrophonePermission, updateStatus, handleError, onMessage, generateWelcomeMessage, initializeSession, voiceId, voiceError]);
 
   // End conversation using Real FTherapy pattern
   const endConversation = useCallback(async () => {
