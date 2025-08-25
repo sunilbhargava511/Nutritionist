@@ -304,19 +304,29 @@ export default function AdminPanel() {
     setError(null);
     
     try {
-      // Get voice settings from the form inputs
-      const form = (event.target as HTMLElement).closest('div');
-      const voiceIdInput = form?.querySelector('input[name="voiceId"]') as HTMLInputElement;
-      const voiceDescInput = form?.querySelector('textarea[name="voiceDescription"]') as HTMLTextAreaElement;
+      // Get voice settings from the form inputs using a more robust selector
+      const buttonElement = event.target as HTMLButtonElement;
+      const container = buttonElement.closest('.border-t.border-purple-200') || 
+                       buttonElement.closest('div');
+      
+      // Look for the voice inputs within the container
+      const voiceIdInput = document.querySelector('input[name="voiceId"]') as HTMLInputElement;
+      const voiceDescInput = document.querySelector('textarea[name="voiceDescription"]') as HTMLTextAreaElement;
+      
+      console.log('Voice ID input found:', !!voiceIdInput);
+      console.log('Voice ID value:', voiceIdInput?.value);
+      console.log('Voice Description input found:', !!voiceDescInput);
       
       // Save conversation style first
       const styleSuccess = await saveConversationStyle(contentPersona, personaGender, customPerson);
       
       // Save voice settings
       const voiceUpdates = {
-        voiceId: voiceIdInput?.value || '',
-        voiceDescription: voiceDescInput?.value || '',
+        voiceId: voiceIdInput?.value || settings?.voiceId || '',
+        voiceDescription: voiceDescInput?.value || settings?.voiceDescription || '',
       };
+      
+      console.log('Saving voice updates:', voiceUpdates);
       
       const response = await fetch('/api/admin/settings', {
         method: 'PUT',
@@ -325,6 +335,11 @@ export default function AdminPanel() {
       });
       
       const voiceSuccess = response.ok;
+      
+      if (!voiceSuccess) {
+        const errorData = await response.json();
+        console.error('Voice settings save failed:', errorData);
+      }
       
       if (styleSuccess && voiceSuccess) {
         await loadData();
