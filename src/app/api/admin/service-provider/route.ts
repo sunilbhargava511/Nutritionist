@@ -1,15 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/lib/database';
-import { serviceProvider } from '@/lib/database/schema';
+import { webapp } from '@/lib/database/schema';
 import { eq } from 'drizzle-orm';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const db = getDB();
+    const { searchParams } = new URL(request.url);
+    const webappKey = searchParams.get('webapp_key') || 'default';
     
-    // Get service provider information
-    const providers = await db.select().from(serviceProvider).limit(1);
-    const provider = providers[0] || null;
+    // Get service provider information from webapp table
+    const webapps = await db.select({
+      businessName: webapp.businessName,
+      address: webapp.address,
+      phoneNumber: webapp.phoneNumber,
+      email: webapp.email,
+      website: webapp.website,
+      logoUrl: webapp.logoUrl,
+      logoPath: webapp.logoPath,
+      logoMimeType: webapp.logoMimeType,
+      logoSize: webapp.logoSize
+    }).from(webapp).where(eq(webapp.webappKey, webappKey)).limit(1);
+    
+    const provider = webapps[0] || null;
     
     return NextResponse.json({
       success: true,
@@ -34,7 +47,8 @@ export async function POST(request: NextRequest) {
       address,
       phoneNumber,
       email,
-      website
+      website,
+      webappKey = 'default'
     } = body;
 
     // Validate required fields
@@ -45,35 +59,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if service provider already exists
-    const existing = await db.select().from(serviceProvider).limit(1);
-    
-    if (existing.length > 0) {
-      // Update existing service provider
-      await db.update(serviceProvider)
-        .set({
-          businessName,
-          address,
-          phoneNumber,
-          email: email || '',
-          website: website || '',
-          updatedAt: new Date().toISOString()
-        })
-        .where(eq(serviceProvider.id, 'default'));
-    } else {
-      // Create new service provider
-      await db.insert(serviceProvider).values({
-        id: 'default',
+    // Update webapp table instead of service provider table
+    await db.update(webapp)
+      .set({
         businessName,
         address,
         phoneNumber,
         email: email || '',
-        website: website || ''
-      });
-    }
+        website: website || '',
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(webapp.webappKey, webappKey));
 
-    // Return the updated service provider
-    const updated = await db.select().from(serviceProvider).limit(1);
+    // Return the updated data
+    const updated = await db.select({
+      businessName: webapp.businessName,
+      address: webapp.address,
+      phoneNumber: webapp.phoneNumber,
+      email: webapp.email,
+      website: webapp.website,
+      logoUrl: webapp.logoUrl,
+      logoPath: webapp.logoPath,
+      logoMimeType: webapp.logoMimeType,
+      logoSize: webapp.logoSize
+    }).from(webapp).where(eq(webapp.webappKey, webappKey)).limit(1);
     
     return NextResponse.json({
       success: true,

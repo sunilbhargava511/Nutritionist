@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 // Lessons for educational delivery (replacing chunks)
 export const lessons = sqliteTable('lessons', {
   id: text('id').primaryKey(),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   videoUrl: text('video_url'), // YouTube URL or external link (nullable now)
   videoPath: text('video_path'), // Path to uploaded video file
@@ -25,6 +26,7 @@ export const lessons = sqliteTable('lessons', {
 // User sessions tracking progress across multiple lessons
 export const userSessions = sqliteTable('user_sessions', {
   id: text('id').primaryKey(),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   userId: text('user_id'), // Optional, for future user accounts
   completedLessons: text('completed_lessons'), // JSON array of completed lesson IDs
   currentLessonId: text('current_lesson_id'), // Currently active lesson
@@ -35,6 +37,7 @@ export const userSessions = sqliteTable('user_sessions', {
 // Individual Q&A conversations for each lesson
 export const lessonConversations = sqliteTable('lesson_conversations', {
   id: text('id').primaryKey(),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   sessionId: text('session_id').notNull(), // References userSessions
   lessonId: text('lesson_id').notNull(), // References lessons
   conversationId: text('conversation_id'), // ElevenLabs conversation ID
@@ -48,6 +51,7 @@ export const lessonConversations = sqliteTable('lesson_conversations', {
 // Conversation style settings
 export const conversationStyle = sqliteTable('conversation_style', {
   id: text('id').primaryKey().default('default'),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   basePersona: text('base_persona').notNull().default('default'),
   gender: text('gender').notNull().default('female'),
   customPerson: text('custom_person').notNull().default(''),
@@ -59,6 +63,7 @@ export const conversationStyle = sqliteTable('conversation_style', {
 // Administrator settings
 export const adminSettings = sqliteTable('admin_settings', {
   id: text('id').primaryKey().default('default'),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   voiceId: text('voice_id').notNull().default('4n2FYtLoSkOUG7xRbnu9'),
   voiceDescription: text('voice_description').notNull().default('Professional, clear voice for nutrition education'),
   personalizationEnabled: integer('personalization_enabled', { mode: 'boolean' }).default(false),
@@ -73,6 +78,7 @@ export const adminSettings = sqliteTable('admin_settings', {
 // System prompts for different purposes (simplified to two types)
 export const systemPrompts = sqliteTable('system_prompts', {
   id: text('id').primaryKey(),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   type: text('type').notNull(), // 'qa' (general) | 'lesson_qa' (lesson-specific) | 'report' (legacy)
   content: text('content').notNull(),
   lessonId: text('lesson_id'), // For lesson-specific prompts (lesson_qa type)
@@ -84,6 +90,7 @@ export const systemPrompts = sqliteTable('system_prompts', {
 // Knowledge base files
 export const knowledgeBaseFiles = sqliteTable('knowledge_base_files', {
   id: text('id').primaryKey(),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   filename: text('filename').notNull(),
   content: text('content').notNull(),
   fileType: text('file_type').notNull(),
@@ -94,6 +101,7 @@ export const knowledgeBaseFiles = sqliteTable('knowledge_base_files', {
 // Conversations (renamed from educational_sessions for clarity)
 export const conversations = sqliteTable('conversations', {
   id: text('id').primaryKey(), // Now uses ElevenLabs conversation_id directly
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   conversationId: text('conversation_id').unique(), // Store ElevenLabs conversation_id for reference
   conversationType: text('conversation_type').notNull().default('structured'), // 'structured' | 'open-ended'
   userId: text('user_id'), // Optional user identification
@@ -110,6 +118,7 @@ export const educationalSessions = conversations;
 // Session progress tracking
 export const sessionProgress = sqliteTable('session_progress', {
   id: text('id').primaryKey(),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   sessionId: text('session_id').notNull(),
   chunkId: text('chunk_id').notNull(),
   userResponse: text('user_response').notNull(),
@@ -129,6 +138,7 @@ export const sessionReports = sqliteTable('session_reports', {
 // Debug LLM Sessions Table
 export const debugSessions = sqliteTable('debug_sessions', {
   id: text('id').primaryKey(),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   startTime: text('start_time').notNull().default(sql`(CURRENT_TIMESTAMP)`),
   endTime: text('end_time'),
@@ -139,6 +149,7 @@ export const debugSessions = sqliteTable('debug_sessions', {
 // Debug LLM Entries Table
 export const debugEntries = sqliteTable('debug_entries', {
   id: text('id').primaryKey(),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   sessionId: text('session_id').notNull(),
   timestamp: text('timestamp').notNull().default(sql`(CURRENT_TIMESTAMP)`),
   type: text('type').notNull(), // 'claude' | 'knowledge-search' | 'rag'
@@ -169,6 +180,7 @@ export const debugEntries = sqliteTable('debug_entries', {
 // Session Events Table for Debug Panel
 export const sessionEvents = sqliteTable('session_events', {
   id: text('id').primaryKey(),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   sessionId: text('session_id').notNull(),
   debugSessionId: text('debug_session_id').notNull(), // Links to debugSessions
   eventType: text('event_type').notNull(), // 'session_started' | 'elevenlabs_conversation_started' | 'lesson_started' | 'lesson_qa_started' | 'open_conversation_started'
@@ -190,6 +202,7 @@ export const sessionEvents = sqliteTable('session_events', {
 // Unified conversation sessions (new session system)
 export const conversationSessions = sqliteTable('conversation_sessions', {
   id: text('id').primaryKey(),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   userId: text('user_id'), // Optional for future user accounts
   sessionType: text('session_type').notNull(), // 'open_ended' | 'lesson_based'
   lessonPhase: text('lesson_phase'), // 'lesson_intro' | 'video_watching' | 'qa_conversation'
@@ -205,6 +218,7 @@ export const conversationSessions = sqliteTable('conversation_sessions', {
 // Complete message transcript (EVERYTHING)
 export const conversationMessages = sqliteTable('conversation_messages', {
   id: text('id').primaryKey(),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   sessionId: text('session_id').notNull(), // Foreign key to conversation_sessions
   messageType: text('message_type').notNull(), // 'tts_opening' | 'tts_lesson_intro' | 'user_voice' | 'assistant_voice' | 'llm_qa_start' | 'system'
   content: text('content').notNull(), // Actual message text
@@ -219,6 +233,7 @@ export const conversationMessages = sqliteTable('conversation_messages', {
 // Admin-configured opening messages
 export const openingMessages = sqliteTable('opening_messages', {
   id: text('id').primaryKey(),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   type: text('type').notNull(), // 'general_opening' | 'lesson_intro'
   lessonId: text('lesson_id'), // NULL for general, specific lesson ID for lesson intros
   messageContent: text('message_content').notNull(), // The TTS message text
@@ -245,6 +260,7 @@ export const openingMessages = sqliteTable('opening_messages', {
 // Audio cache table for additional storage
 export const audioCache = sqliteTable('audio_cache', {
   id: text('id').primaryKey(),
+  webappKey: text('webapp_key').notNull().references(() => webapp.webappKey, { onDelete: 'cascade' }),
   messageId: text('message_id').notNull().references(() => openingMessages.id, { onDelete: 'cascade' }),
   audioData: text('audio_data').notNull(), // Base64 encoded audio
   filePath: text('file_path'), // Optional file system path
@@ -258,7 +274,66 @@ export const audioCache = sqliteTable('audio_cache', {
   accessCount: integer('access_count').default(0),
 });
 
-// Service Provider information
+// Unified Webapp Configuration (replaces service_provider, website_config, and service_summary)
+export const webapp = sqliteTable('webapp', {
+  id: text('id').primaryKey(),
+  webappKey: text('webapp_key').unique().notNull(),
+  
+  // Service Summary fields
+  serviceDescription: text('service_description').notNull().default(''),
+  keyBenefits: text('key_benefits').notNull().default(''),
+  
+  // Service Provider fields
+  businessName: text('business_name').notNull().default(''),
+  address: text('address').notNull().default(''),
+  phoneNumber: text('phone_number').notNull().default(''),
+  email: text('email').default(''),
+  website: text('website').default(''),
+  logoUrl: text('logo_url'),
+  logoPath: text('logo_path'),
+  logoMimeType: text('logo_mime_type'),
+  logoSize: integer('logo_size'),
+  
+  // Website Configuration fields
+  lessonsName: text('lessons_name').notNull().default('Lessons'),
+  lessonsDescription: text('lessons_description').notNull().default('Educational video content'),
+  conversationName: text('conversation_name').notNull().default('Chat'),
+  conversationDescription: text('conversation_description').notNull().default('Open conversation with AI'),
+  
+  // Multi-tenant fields
+  subdomain: text('subdomain').unique(),
+  customDomain: text('custom_domain').unique(),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  
+  // Branding fields (from business_branding)
+  primaryColor: text('primary_color').default('#3b82f6'),
+  secondaryColor: text('secondary_color').default('#ef4444'),
+  accentColor: text('accent_color').default('#10b981'),
+  neutralColor: text('neutral_color').default('#6b7280'),
+  backgroundColor: text('background_color').default('#ffffff'),
+  textColor: text('text_color').default('#1f2937'),
+  headerBgColor: text('header_bg_color').default('#ffffff'),
+  headerTextColor: text('header_text_color').default('#1f2937'),
+  theme: text('theme').notNull().default('light'),
+  borderRadius: text('border_radius').default('0.375rem'),
+  fontFamily: text('font_family').default('Inter'),
+  navigationStyle: text('navigation_style').default('horizontal'),
+  buttonStyle: text('button_style').default('rounded'),
+  buttonSize: text('button_size').default('medium'),
+  customCss: text('custom_css'),
+  customFonts: text('custom_fonts'),
+  tagline: text('tagline'),
+  welcomeMessage: text('welcome_message'),
+  showLogo: integer('show_logo', { mode: 'boolean' }).default(true),
+  showTagline: integer('show_tagline', { mode: 'boolean' }).default(true),
+  customFavicon: text('custom_favicon'),
+  
+  createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`),
+  updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`),
+});
+
+// Legacy tables (will be removed after migration)
+// Keeping for backward compatibility during transition
 export const serviceProvider = sqliteTable('service_provider', {
   id: text('id').primaryKey().default('default'),
   businessName: text('business_name').notNull().default(''),
@@ -266,11 +341,14 @@ export const serviceProvider = sqliteTable('service_provider', {
   phoneNumber: text('phone_number').notNull().default(''),
   email: text('email').default(''),
   website: text('website').default(''),
+  logoUrl: text('logo_url'),
+  logoPath: text('logo_path'),
+  logoMimeType: text('logo_mime_type'),
+  logoSize: integer('logo_size'),
   createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`),
   updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`),
 });
 
-// Website Configuration for terminology and branding
 export const websiteConfig = sqliteTable('website_config', {
   id: text('id').primaryKey().default('default'),
   lessonsName: text('lessons_name').notNull().default('Lessons'),
@@ -281,7 +359,6 @@ export const websiteConfig = sqliteTable('website_config', {
   updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`),
 });
 
-// Service Summary for describing what the service offers
 export const serviceSummary = sqliteTable('service_summary', {
   id: text('id').primaryKey().default('default'),
   serviceDescription: text('service_description').notNull().default(''),
@@ -348,3 +425,6 @@ export type NewWebsiteConfig = typeof websiteConfig.$inferInsert;
 
 export type ServiceSummary = typeof serviceSummary.$inferSelect;
 export type NewServiceSummary = typeof serviceSummary.$inferInsert;
+
+export type Webapp = typeof webapp.$inferSelect;
+export type NewWebapp = typeof webapp.$inferInsert;

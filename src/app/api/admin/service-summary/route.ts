@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/lib/database';
-import { serviceSummary } from '@/lib/database/schema';
+import { webapp } from '@/lib/database/schema';
 import { eq } from 'drizzle-orm';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const db = getDB();
+    const { searchParams } = new URL(request.url);
+    const webappKey = searchParams.get('webapp_key') || 'default';
     
-    // Get service summary information
-    const summaries = await db.select().from(serviceSummary).limit(1);
-    const summary = summaries[0] || null;
+    // Get service summary information from webapp table
+    const webapps = await db.select({
+      serviceDescription: webapp.serviceDescription,
+      keyBenefits: webapp.keyBenefits
+    }).from(webapp).where(eq(webapp.webappKey, webappKey)).limit(1);
+    
+    const summary = webapps[0] || null;
     
     return NextResponse.json({
       success: true,
@@ -31,7 +37,8 @@ export async function POST(request: NextRequest) {
     
     const {
       serviceDescription,
-      keyBenefits
+      keyBenefits,
+      webappKey = 'default'
     } = body;
 
     // Validate required fields
@@ -42,29 +49,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if service summary already exists
-    const existing = await db.select().from(serviceSummary).limit(1);
-    
-    if (existing.length > 0) {
-      // Update existing service summary
-      await db.update(serviceSummary)
-        .set({
-          serviceDescription,
-          keyBenefits,
-          updatedAt: new Date().toISOString()
-        })
-        .where(eq(serviceSummary.id, 'default'));
-    } else {
-      // Create new service summary
-      await db.insert(serviceSummary).values({
-        id: 'default',
+    // Update webapp table instead of service summary table
+    await db.update(webapp)
+      .set({
         serviceDescription,
-        keyBenefits
-      });
-    }
+        keyBenefits,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(webapp.webappKey, webappKey));
 
-    // Return the updated service summary
-    const updated = await db.select().from(serviceSummary).limit(1);
+    // Return the updated data
+    const updated = await db.select({
+      serviceDescription: webapp.serviceDescription,
+      keyBenefits: webapp.keyBenefits
+    }).from(webapp).where(eq(webapp.webappKey, webappKey)).limit(1);
     
     return NextResponse.json({
       success: true,

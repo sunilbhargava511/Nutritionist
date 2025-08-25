@@ -1,15 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/lib/database';
-import { websiteConfig } from '@/lib/database/schema';
+import { webapp } from '@/lib/database/schema';
 import { eq } from 'drizzle-orm';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const db = getDB();
+    const { searchParams } = new URL(request.url);
+    const webappKey = searchParams.get('webapp_key') || 'default';
     
-    // Get website configuration
-    const configs = await db.select().from(websiteConfig).limit(1);
-    const config = configs[0] || null;
+    // Get website configuration from webapp table
+    const webapps = await db.select({
+      lessonsName: webapp.lessonsName,
+      lessonsDescription: webapp.lessonsDescription,
+      conversationName: webapp.conversationName,
+      conversationDescription: webapp.conversationDescription
+    }).from(webapp).where(eq(webapp.webappKey, webappKey)).limit(1);
+    
+    const config = webapps[0] || null;
     
     return NextResponse.json({
       success: true,
@@ -33,7 +41,8 @@ export async function POST(request: NextRequest) {
       lessonsName,
       lessonsDescription,
       conversationName,
-      conversationDescription
+      conversationDescription,
+      webappKey = 'default'
     } = body;
 
     // Validate required fields
@@ -44,33 +53,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if website config already exists
-    const existing = await db.select().from(websiteConfig).limit(1);
-    
-    if (existing.length > 0) {
-      // Update existing config
-      await db.update(websiteConfig)
-        .set({
-          lessonsName,
-          lessonsDescription,
-          conversationName,
-          conversationDescription,
-          updatedAt: new Date().toISOString()
-        })
-        .where(eq(websiteConfig.id, 'default'));
-    } else {
-      // Create new config
-      await db.insert(websiteConfig).values({
-        id: 'default',
+    // Update webapp table instead of website config table
+    await db.update(webapp)
+      .set({
         lessonsName,
         lessonsDescription,
         conversationName,
-        conversationDescription
-      });
-    }
+        conversationDescription,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(webapp.webappKey, webappKey));
 
-    // Return the updated config
-    const updated = await db.select().from(websiteConfig).limit(1);
+    // Return the updated data
+    const updated = await db.select({
+      lessonsName: webapp.lessonsName,
+      lessonsDescription: webapp.lessonsDescription,
+      conversationName: webapp.conversationName,
+      conversationDescription: webapp.conversationDescription
+    }).from(webapp).where(eq(webapp.webappKey, webappKey)).limit(1);
     
     return NextResponse.json({
       success: true,

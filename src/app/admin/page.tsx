@@ -28,7 +28,8 @@ import {
   Terminal,
   Zap,
   Sparkles,
-  Home
+  Home,
+  Building
 } from 'lucide-react';
 import { 
   Lesson,
@@ -39,8 +40,11 @@ import {
 } from '@/types';
 import AppHeader from '@/components/AppHeader';
 import { useElevenLabsVoiceSettings } from '@/hooks/useVoiceConfig';
+import { useWebapp, useWebappKey } from '@/lib/webapp-context';
+import WebappSelector, { CompactWebappSelector, WebappStatusIndicator } from '@/components/WebappSelector';
+import WebappManagement from '@/components/admin/WebappManagement';
 
-type AdminTab = 'overview' | 'lessons' | 'personas' | 'settings' | 'prompts' | 'knowledge' | 'reports' | 'opening-messages' | 'audio-management' | 'debug';
+type AdminTab = 'overview' | 'webapps' | 'lessons' | 'personas' | 'settings' | 'prompts' | 'knowledge' | 'reports' | 'opening-messages' | 'audio-management' | 'debug';
 type SettingsTab = 'general' | 'ui';
 
 interface Persona {
@@ -56,6 +60,10 @@ interface Persona {
 
 
 export default function AdminPanel() {
+  // Webapp context
+  const { currentWebapp, webapps, isLoading: webappLoading, error: webappError } = useWebapp();
+  const webappKey = useWebappKey();
+  
   const [currentTab, setCurrentTab] = useState<AdminTab>('overview');
   const [currentSettingsTab, setCurrentSettingsTab] = useState<SettingsTab>('general');
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -492,7 +500,8 @@ export default function AdminPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           serviceDescription,
-          keyBenefits
+          keyBenefits,
+          webappKey
         })
       });
 
@@ -650,7 +659,8 @@ export default function AdminPanel() {
       phoneNumber: formData.get('phoneNumber') as string,
       address: formData.get('address') as string,
       email: formData.get('email') as string,
-      website: formData.get('website') as string
+      website: formData.get('website') as string,
+      webappKey
     };
 
     try {
@@ -672,10 +682,10 @@ export default function AdminPanel() {
     }
   };
 
-  // Load initial data
+  // Load initial data and reload when webapp changes
   useEffect(() => {
     loadData();
-  }, []);
+  }, [webappKey]);
 
   // Load audio data when the audio tab is selected
   useEffect(() => {
@@ -747,7 +757,15 @@ export default function AdminPanel() {
     setIsLoading(true);
     setError(null);
     
+    // Don't load data if no webapp is selected
+    if (!webappKey) {
+      console.log('No webapp key available, skipping data load');
+      setIsLoading(false);
+      return;
+    }
+    
     try {
+      const webappParam = `?webapp_key=${encodeURIComponent(webappKey)}`;
       const [lessonsRes, settingsRes, promptsRes, knowledgeRes, reportsRes, templateRes, openingMessagesRes, conversationStyleRes, serviceSummaryRes, serviceProviderRes] = await Promise.all([
         fetch('/api/lessons'),
         fetch('/api/admin/settings'),
@@ -757,8 +775,8 @@ export default function AdminPanel() {
         fetch('/api/admin/base-template'),
         fetch('/api/admin/opening-messages'),
         fetch('/api/admin/conversation-style'),
-        fetch('/api/admin/service-summary'),
-        fetch('/api/admin/service-provider')
+        fetch(`/api/admin/service-summary${webappParam}`),
+        fetch(`/api/admin/service-provider${webappParam}`)
       ]);
 
       if (lessonsRes.ok) {
@@ -2013,12 +2031,22 @@ The lesson context will be automatically added to this prompt when used.`;
           {/* Side Panel Navigation */}
           <div className="w-64 bg-white rounded-xl shadow-sm border border-gray-200 h-fit">
             <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Admin Panel</h3>
-              <p className="text-sm text-gray-500">Manage educational content & monitoring</p>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-900">Admin Panel</h3>
+                <WebappStatusIndicator />
+              </div>
+              <p className="text-sm text-gray-500 mb-4">Manage educational content & monitoring</p>
+              <CompactWebappSelector className="mb-2" />
+              {webappError && (
+                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+                  Webapp error: {webappError}
+                </div>
+              )}
             </div>
             <nav className="p-4 space-y-2">
               {[
                 { id: 'overview', label: 'Overview', icon: Home },
+                { id: 'webapps', label: 'Webapps', icon: Building, count: webapps.length },
                 { id: 'lessons', label: 'Lessons', icon: FileText, count: lessons.length },
                 { id: 'prompts', label: 'System Prompts', icon: Database, count: prompts.length },
                 { id: 'knowledge', label: 'Knowledge Base', icon: Upload, count: knowledgeFiles.length },
@@ -2056,6 +2084,106 @@ The lesson context will be automatically added to this prompt when used.`;
           {currentTab === 'overview' && (
             <div className="p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Overview</h2>
+              
+              {/* Current Webapp Info */}
+              {currentWebapp && (
+                <div className="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-blue-900">Current Webapp</h3>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={() => setCurrentTab('webapps')}
+                        className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        Manage Webapps
+                      </button>
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-2 h-2 rounded-full ${currentWebapp.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <span className={`text-sm font-medium ${currentWebapp.isActive ? 'text-green-700' : 'text-red-700'}`}>
+                          {currentWebapp.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-sm font-medium text-blue-800">Business Name:</span>
+                          <p className="text-sm text-blue-700">{currentWebapp.businessName}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-blue-800">Webapp Key:</span>
+                          <p className="text-sm text-blue-700 font-mono">{currentWebapp.webappKey}</p>
+                        </div>
+                        {currentWebapp.subdomain && (
+                          <div>
+                            <span className="text-sm font-medium text-blue-800">Subdomain:</span>
+                            <p className="text-sm text-blue-700">{currentWebapp.subdomain}</p>
+                          </div>
+                        )}
+                        {currentWebapp.website && (
+                          <div>
+                            <span className="text-sm font-medium text-blue-800">Website:</span>
+                            <a href={currentWebapp.website} target="_blank" rel="noopener noreferrer" 
+                               className="text-sm text-blue-600 hover:text-blue-800 underline">
+                              {currentWebapp.website}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-sm font-medium text-blue-800">Total Webapps:</span>
+                          <p className="text-sm text-blue-700">{webapps.length}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-blue-800">Lessons Page:</span>
+                          <p className="text-sm text-blue-700">{currentWebapp.lessonsName}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-blue-800">Conversation Page:</span>
+                          <p className="text-sm text-blue-700">{currentWebapp.conversationName}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-blue-800">Theme:</span>
+                          <p className="text-sm text-blue-700 capitalize">{currentWebapp.theme}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {currentWebapp.serviceDescription && (
+                    <div className="mt-4 pt-4 border-t border-blue-200">
+                      <span className="text-sm font-medium text-blue-800">Service Description:</span>
+                      <p className="text-sm text-blue-700 mt-1">{currentWebapp.serviceDescription}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {webappLoading && (
+                <div className="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-300 rounded w-1/4 mb-2"></div>
+                    <div className="h-3 bg-gray-300 rounded w-3/4"></div>
+                  </div>
+                </div>
+              )}
+              
+              {webappError && (
+                <div className="mb-8 p-4 bg-red-50 rounded-lg border border-red-200">
+                  <div className="flex items-center space-x-2">
+                    <AlertCircle className="w-4 h-4 text-red-500" />
+                    <span className="text-sm font-medium text-red-800">Webapp Error</span>
+                  </div>
+                  <p className="text-sm text-red-700 mt-1">{webappError}</p>
+                </div>
+              )}
               
               {/* Provider Website Analysis */}
               <div className="mb-8 p-6 bg-indigo-50 rounded-lg border border-indigo-200">
@@ -2558,6 +2686,12 @@ Affordable alternative to traditional nutrition counseling"
                 </button>
               </div>
             </div>
+          )}
+          {currentTab === 'webapps' && (
+            <WebappManagement 
+              onSuccess={showSuccess}
+              onError={setError}
+            />
           )}
           {currentTab === 'lessons' && (
             <div className="p-6">
