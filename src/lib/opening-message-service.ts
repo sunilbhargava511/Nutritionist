@@ -1,7 +1,7 @@
 import { getDB } from './database';
 import * as schema from './database/schema';
 import { eq, and } from 'drizzle-orm';
-import { voiceConfigService } from './voice-config-service';
+import { voiceConfigService, VoiceConfigService } from './voice-config-service';
 
 export interface VoiceSettings {
   voiceId: string;
@@ -41,6 +41,9 @@ export class OpeningMessageService {
     if (messages.length === 0) return null;
     
     const message = messages[0];
+    
+    // No fallback logic - voice config must be available
+    
     return this.enrichWithAudioCache(message);
   }
 
@@ -327,16 +330,9 @@ export class OpeningMessageService {
         useSpeakerBoost: voiceConfig.useSpeakerBoost !== false,
       };
     } catch (error) {
-      console.warn('Failed to get voice config, using fallback:', error);
-      // Fallback to default settings
-      return {
-        voiceId: '4n2FYtLoSkOUG7xRbnu9',
-        speed: 1.0,
-        stability: 0.5,
-        similarityBoost: 0.75,
-        style: 0.3,
-        useSpeakerBoost: true,
-      };
+      console.error('❌ Failed to get voice config:', error);
+      // Re-throw the error - no fallback allowed
+      throw new Error(`Voice configuration required: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

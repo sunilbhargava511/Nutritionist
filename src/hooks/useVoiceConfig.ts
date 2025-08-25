@@ -29,15 +29,8 @@ export function useVoiceConfig(): UseVoiceConfigResult {
       setError(errorMessage);
       console.error('useVoiceConfig: Failed to load configuration:', err);
       
-      // Use fallback config on error
-      setVoiceConfig({
-        voiceId: '4n2FYtLoSkOUG7xRbnu9',
-        description: 'Fallback female voice',
-        stability: 0.6,
-        similarityBoost: 0.8,
-        style: 0.4,
-        useSpeakerBoost: true
-      });
+      // No fallback - keep error state
+      // Voice config remains null when there's an error
     } finally {
       setIsLoading(false);
     }

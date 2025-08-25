@@ -27,15 +27,8 @@ export class VoiceConfigService {
   private cacheTimestamp: number = 0;
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-  // Fallback voice configuration - only used if admin settings are unavailable
-  private readonly FALLBACK_CONFIG: VoiceConfig = {
-    voiceId: '4n2FYtLoSkOUG7xRbnu9', // User requested voice ID
-    description: 'Professional voice',
-    stability: 0.6,
-    similarityBoost: 0.8,
-    style: 0.4,
-    useSpeakerBoost: true
-  };
+  // No fallback configuration - we throw errors instead
+  private readonly NO_FALLBACK_POLICY = 'Voice configuration required - no fallback allowed';
 
   private constructor() {
     // No dependencies needed - using API calls
@@ -75,32 +68,32 @@ export class VoiceConfigService {
             useSpeakerBoost: true // Default speaker boost
           };
         } else {
-          console.warn('No admin settings found, using fallback voice configuration');
-          console.log('🎙️ Using default voice ID: 4n2FYtLoSkOUG7xRbnu9');
-          this.cachedConfig = { ...this.FALLBACK_CONFIG };
+          console.error('❌ CRITICAL ERROR: No admin settings found in database');
+          throw new Error('Voice configuration not found. Please configure voice settings in the admin panel.');
         }
       } else {
-        console.warn('Failed to fetch admin settings, using fallback voice configuration');
-        console.log('🎙️ Using default voice ID: 4n2FYtLoSkOUG7xRbnu9');
-        this.cachedConfig = { ...this.FALLBACK_CONFIG };
+        console.error('❌ CRITICAL ERROR: Failed to fetch admin settings from API');
+        throw new Error('Failed to load voice configuration. Please check your database connection and admin settings.');
       }
 
       this.cacheTimestamp = Date.now();
       return this.cachedConfig;
     } catch (error) {
-      console.error('Failed to load voice configuration from admin settings:', error);
-      return { ...this.FALLBACK_CONFIG };
+      console.error('❌ Failed to load voice configuration:', error);
+      // Re-throw the error - no fallback allowed
+      throw error instanceof Error ? error : new Error('Unknown error loading voice configuration');
     }
   }
 
   /**
-   * Get voice configuration synchronously (uses cache or fallback)
+   * Get voice configuration synchronously (uses cache or throws error)
    */
   getVoiceConfigSync(): VoiceConfig {
     if (this.cachedConfig && (Date.now() - this.cacheTimestamp) < this.CACHE_DURATION) {
       return this.cachedConfig;
     }
-    return { ...this.FALLBACK_CONFIG };
+    // No cached config available - throw error
+    throw new Error('Voice configuration not loaded. Please ensure admin settings are configured.');
   }
 
   /**
@@ -124,6 +117,7 @@ export class VoiceConfigService {
     const config = await this.getVoiceConfig();
     return config.voiceId;
   }
+
 
   /**
    * Get voice ID synchronously (uses cache or fallback)

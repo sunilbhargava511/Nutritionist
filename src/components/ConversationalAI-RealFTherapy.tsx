@@ -329,7 +329,7 @@ export default function ConversationalAI({
             interruptible: false
           },
           tts: {
-            voiceId: voiceId || '4n2FYtLoSkOUG7xRbnu9',
+            voiceId: voiceId || (() => { throw new Error('Voice ID is required - no fallback allowed'); })(),
             stability: 0.6,
             similarity_boost: 0.8,
             style: 0.4,

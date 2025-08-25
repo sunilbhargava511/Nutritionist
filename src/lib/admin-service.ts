@@ -26,9 +26,13 @@ export class AdminService {
     
     if (!existingSettings) {
       // Create new settings if none exist
+      // For initial creation, we need some defaults (but updates must provide values)
+      if (!updates.voiceId) {
+        throw new Error('Voice ID is required when creating admin settings');
+      }
       await getDB().insert(schema.adminSettings).values({
         id: 'default',
-        voiceId: updates.voiceId || '4n2FYtLoSkOUG7xRbnu9',
+        voiceId: updates.voiceId,
         voiceDescription: updates.voiceDescription || 'Professional voice',
         personalizationEnabled: updates.personalizationEnabled || false,
         conversationAware: updates.conversationAware !== undefined ? updates.conversationAware : true,
